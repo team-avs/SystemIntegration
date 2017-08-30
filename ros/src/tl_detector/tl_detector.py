@@ -14,6 +14,7 @@ import math
 from traffic_light_config import config
 
 STATE_COUNT_THRESHOLD = 3
+DEBUG_MODE = False
 
 class TLDetector(object):
     def __init__(self):
@@ -112,7 +113,6 @@ class TLDetector(object):
             if curr_dist < min_dist:
                 min_dist = curr_dist
                 closest_index = i
-        rospy.logdebug("Closest waypoint: %d", closest_index)
         return closest_index
 
     def distance(self, a, b):
@@ -124,7 +124,7 @@ class TLDetector(object):
         Returns:
             value: distance value between a and b
         """
-        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
 
     def project_to_image_plane(self, point_in_world):
         """Project point from 3D world coordinates to 2D camera image location
@@ -177,6 +177,10 @@ class TLDetector(object):
             return False
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        if DEBUG_MODE:
+            # save image for debug purposes
+            now = rospy.Time.now()
+            cv2.imwrite('tmp/' + str(now) +'.png', cv_image)
 
         x, y = self.project_to_image_plane(light.pose.pose.position)
 
@@ -198,8 +202,28 @@ class TLDetector(object):
         light_positions = self.config['light_positions']
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
-
-        #TODO find the closest visible traffic light (if one exists)
+            # find the closest visible traffic light (if one exists)
+            if self.waypoints:
+                closest_index = None
+                min_dist = float("inf")
+                for i, light_position in enumerate(light_positions):
+                    pos = self.waypoints.waypoints[car_position].pose.pose.position
+                    curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
+                    if curr_dist < min_dist:
+                        min_dist = curr_dist
+                        closest_index = i
+                # create object for closest light position
+                pose = Pose()
+                pose.position.x = light_positions[closest_index][0]
+                pose.position.y = light_positions[closest_index][1]
+                pose.position.z = 0
+                light_wp = self.get_closest_waypoint(pose)
+                rospy.logdebug("Traffic light waypoint: %d", light_wp)
+                rospy.logdebug("Car waypoint: %d", car_position)
+                # create light object
+                light = TrafficLight()
+                light.pose = self.waypoints.waypoints[light_wp].pose
+                light.pose.pose.position.z = 5.85 # FIXME detect light position based on image
 
         if light:
             state = self.get_light_state(light)
