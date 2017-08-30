@@ -10,6 +10,8 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
+from traffic_light_config import config
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -100,9 +102,29 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        if not self.waypoints:
+            return None
+        # brute-force algorithm
+        closest_index = None
+        min_dist = float("inf")
+        for i, waypoint in enumerate(self.waypoints.waypoints):
+            curr_dist = self.distance(pose.position, waypoint.pose.pose.position)
+            if curr_dist < min_dist:
+                min_dist = curr_dist
+                closest_index = i
+        rospy.logdebug("Closest waypoint: %d", closest_index)
+        return closest_index
 
+    def distance(self, a, b):
+        """Calculates distance between positions a and b
+        Args:
+            a (position): first position
+            b (position): second position
+
+        Returns:
+            value: distance value between a and b
+        """
+        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
 
     def project_to_image_plane(self, point_in_world):
         """Project point from 3D world coordinates to 2D camera image location
