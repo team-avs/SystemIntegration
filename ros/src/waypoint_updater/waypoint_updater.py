@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import rospy
+import tf
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 
 import math
+import copy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -23,6 +25,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
+SPEED = 5 # ~10MPH
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -33,20 +36,29 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
-        # TODO: Add other member variables you need below
+        self.position = None
+
+	self.lane = None
 
         rospy.spin()
 
     def pose_cb(self, msg):
-        # TODO: Implement
-        pass
+        self.position = msg.pose.position
+        #self.publish_final_wps()
+
+	#quaternion = ( 
+	#    msg.pose.orientation.x, 
+	#    msg.pose.orientation.y, 
+	#    msg.pose.orientation.z, 
+        #    msg.pose.orientation.w)
+	#euler = tf.transformations.euler_from_quaternion(quaternion)
+	#self.yaw = euler[2]
 
     def waypoints_cb(self, waypoints):
-        # TODO: Implement
-        pass
+	self.lane = waypoints
+        self.publish_final_wps()
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -69,7 +81,40 @@ class WaypointUpdater(object):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
+    def wpbehind(self, wp):
+        wpslen = len(self.lane.waypoints)
+        dx = self.position.x - self.lane.waypoints[wp].pose.pose.position.x
+	dy = self.position.y - self.lane.waypoints[wp].pose.pose.position.y
+        nx = self.lane.waypoints[(wp+1)%wpslen].pose.pose.position.x - \
+             self.lane.waypoints[wp].pose.pose.position.x
+        ny = self.lane.waypoints[(wp+1)%wpslen].pose.pose.position.y - \
+             self.lane.waypoints[wp].pose.pose.position.y
+        dp = dx*nx + dy*ny
+	return dp>0.0
 
+    def publish_final_wps(self):
+        if self.lane == None or self.position==None:
+	    return
+	wpslen = len(self.lane.waypoints)
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+	mindist = 1000000000.0
+	wp = -1
+        for i in range(wpslen):
+	    d = dl(self.position, self.lane.waypoints[i].pose.pose.position)
+	    if d < mindist:
+		mindist = d
+		wp = i
+	if self.wpbehind(wp):
+	    wp = (wp+1)%wpslen
+	l = Lane()
+        #l.header = std_msgs.msg.Header()
+	l.header.stamp = rospy.Time.now()
+	for i in range(wp, wp+LOOKAHEAD_WPS):
+	    currwp = copy.deepcopy(self.lane.waypoints[i%wpslen])
+            currwp.twist.twist.linear.x = SPEED
+	    l.waypoints.append(currwp)
+        #rospy.loginfo('Pub: - wp:%s, len:%s',wp, len(l.waypoints))
+	self.final_waypoints_pub.publish(l)
 
 if __name__ == '__main__':
     try:
