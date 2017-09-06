@@ -11,6 +11,7 @@ import tf
 import cv2
 import yaml
 import math
+import numpy as np
 from traffic_light_config import config
 
 STATE_COUNT_THRESHOLD = 3
@@ -140,11 +141,12 @@ class TLDetector(object):
 
         fx = self.config['camera_info']['focal_length_x']
         fy = self.config['camera_info']['focal_length_y']
-        image_width = self.config['camera_info']['image_width']
-        image_height = self.config['camera_info']['image_height']
+        image_width = 800#self.config['camera_info']['image_width']
+        image_height = 600#self.config['camera_info']['image_height']
 
         # get transform between pose of camera and world frame
         trans = None
+        rot = None
         try:
             now = rospy.Time.now()
             self.listener.waitForTransform("/base_link",
@@ -156,11 +158,20 @@ class TLDetector(object):
             rospy.logerr("Failed to find camera to map transform")
 
         #TODO Use tranform and rotation to calculate 2D position of light in image
+        object_points = np.array([[point_in_world.y, point_in_world.z, point_in_world.x]])
+        euler_rot = tf.transformations.euler_from_quaternion(rot)
+        rospy.logwarn("trans: %s", trans)
+        rospy.logwarn("rot: %s", euler_rot)
+        rospy.logwarn("points: %s", object_points)
+        tvec = np.array([trans[1], trans[2], trans[0]])
+        camera_matrix = np.array([[fx, 0, image_width*0.5], [ 0, fy*300, -image_height*0.5], [ 0,  0,  1]])
+        ret, _ = cv2.projectPoints(object_points, euler_rot, tvec, camera_matrix, None)
+        x, y = ret[0][0]
+        # x = (fx*point_in_world.y+trans[1])/point_in_world.x + image_width*0.5
+        # y = image_height*0.5 - (fy*point_in_world.y+trans[2])/point_in_world.x
 
-        x = 0
-        y = 0
-
-        return (x, y)
+        rospy.logwarn("xy: %f %f", x, y)
+        return (int(x), int(y))
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -177,12 +188,14 @@ class TLDetector(object):
             return False
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+
+        x, y = self.project_to_image_plane(light.pose.pose.position)
+
         if DEBUG_MODE:
             # save image for debug purposes
             now = rospy.Time.now()
+            cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
             cv2.imwrite('tmp/' + str(now) +'.png', cv_image)
-
-        x, y = self.project_to_image_plane(light.pose.pose.position)
 
         #TODO use light location to zoom in on traffic light in image
 
