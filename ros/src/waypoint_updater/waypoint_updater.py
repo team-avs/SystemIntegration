@@ -4,6 +4,8 @@ import rospy
 import tf
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+#from styx_msgs.msg import Int32
+
 
 import math
 import copy
@@ -23,7 +25,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 20 # Number of waypoints we will publish. You can change this number
 
 SPEED = 5 # ~10MPH
 
@@ -35,6 +37,10 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
+
+        # Uncomment the following two lines and the import when dealing with TL 
+        #rospy.Subscriber('/obstacle_waypoints', PoseStamped, self.obstacle_cb)
+        #rospy.Subscriber('/traffic_waypoints', Int32, self.traffic_cb
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -81,6 +87,7 @@ class WaypointUpdater(object):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
+
     def wpbehind(self, wp):
         wpslen = len(self.lane.waypoints)
         dx = self.position.x - self.lane.waypoints[wp].pose.pose.position.x
