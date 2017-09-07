@@ -74,7 +74,7 @@ class DBWNode(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(20) # 50Hz
+        rate = rospy.Rate(10) # 50Hz
 
 	start_time = 0
         while not start_time:
@@ -82,7 +82,7 @@ class DBWNode(object):
 
         while not rospy.is_shutdown():
 
-#            if self.dbw_enabled: 
+            #if self.dbw_enabled: 
 ###For some reason if I use this if-statement above, nothing happens even if manual mode is switched off
 ###I checked that the variable is changing properly
 ###More investigation or maybe newer simulator is needed
