@@ -76,6 +76,12 @@ class Controller(object):
          elapsed = kwargs.get('elapsed')
 
          velocity_error = trgtv - currv
+
+         # TODO: Maurizio to check with Mate
+         # use PID for throttle 
+         # use yawcontroller to get the steering angle
+         # use PID for steering
+         # Question: how to calculate the CTE for steering? 
           
          throttle = 2.0
          brake = 0.0 
