@@ -113,7 +113,7 @@ class DBWNode(object):
             throttle, brake, angle = self.controller.control(**control_args)
 
             if self.dbw_enabled:
-                self.publish(throttle, brake, -angle*180./3.14159265/25.0)
+                self.publish(throttle, brake, angle*180./3.14159265/5.0)
             
             #rospy.loginfo('---------------------------------------------------------------------------')
             #rospy.loginfo('DBW Loop In : cv:%s;cav:%s;tv:%s;tav:%s;',self.currv,self.currav,self.trgtv,self.trgtav)
