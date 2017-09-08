@@ -2,7 +2,7 @@ from yaw_controller import YawController
 
 import rospy
 import pid
-import lowpass
+from lowpass import LowPassFilter
 
 
 GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
@@ -49,6 +49,7 @@ class Controller(object):
 
          self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
          self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
+         self.lowpass_filter = LowPassFilter(0.2, 0.2) # TODO find params
 
          self.start_time = rospy.get_time()
 
@@ -85,6 +86,9 @@ class Controller(object):
           
          throttle = 2.0
          brake = 0.0 
-         angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+         target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+         current_angle = self.yawcontroller.get_steering(trgtv, currav, currv)
+         angle = self.steer_pid.step(target_angle - current_angle, elapsed)
+         angle = self.lowpass_filter.filt(angle)
 
          return throttle, brake, angle
