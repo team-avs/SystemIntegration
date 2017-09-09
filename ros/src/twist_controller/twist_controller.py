@@ -11,9 +11,9 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 2.0
-T_ki = 0.0
-T_kd = 0.0
+T_kp = 0.1
+T_ki = 0.1
+T_kd = 0.1
 
 # PID params for steer
 S_kp = 2.6
@@ -52,7 +52,7 @@ class Controller(object):
 		 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
 											max_lat_accel, max_steer_angle)
 
-		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
+		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=-5, mx=1.) # TODO values not read from kwargs?
 		 self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.lowpass_filter = LowPassFilter(tau, s) # TODO find params
 
@@ -85,15 +85,9 @@ class Controller(object):
 		 # use PID for throttle 
 		 # use yawcontroller to get the steering angle
 		 # use PID for steering
-		 # Question: how to calculate the CTE for steering? 
 		  
 		 if dbw_enabled:
-			 if (currv < 10): # TODO how should speed be limited?
-				throttle = 0.5
-				test = self.throttle_pid.step(trgtv - currv, elapsed)
-				#rospy.loginfo(trgtv - currv)
-			 else:
-				throttle = 0.0
+			 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
 			 brake = 0.0 
 			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
 			 current_angle = self.yawcontroller.get_steering(trgtv, currav, currv)
