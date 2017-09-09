@@ -4,6 +4,8 @@ import rospy
 import pid
 from lowpass import LowPassFilter
 
+import math
+
 
 GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
@@ -37,24 +39,24 @@ class Controller(object):
 ##                    'accel_limt' : accel_limit
 ##                    }
 
-     def __init__(self, *args, **kwargs):
+	 def __init__(self, *args, **kwargs):
 
-         wheel_base = kwargs.get('wheel_base')
-         steer_ratio = kwargs.get('steer_ratio')
-         min_speed = kwargs.get('min_speed')
-         max_lat_accel = kwargs.get('max_lat_accel')
-         max_steer_angle = kwargs.get('max_steer_angle')
-         decel_limit = kwargs.get('decel_limit')
-         accel_limit = kwargs.get('accel_limit')
-     
-         self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
-                                            max_lat_accel, max_steer_angle)
+		 wheel_base = kwargs.get('wheel_base')
+		 steer_ratio = kwargs.get('steer_ratio')
+		 min_speed = kwargs.get('min_speed')
+		 max_lat_accel = kwargs.get('max_lat_accel')
+		 max_steer_angle = kwargs.get('max_steer_angle')
+		 decel_limit = kwargs.get('decel_limit')
+		 accel_limit = kwargs.get('accel_limit')
+	 
+		 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
+											max_lat_accel, max_steer_angle)
 
-         self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
-         self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
-         self.lowpass_filter = LowPassFilter(tau, s) # TODO find params
+		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
+		 self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
+		 self.lowpass_filter = LowPassFilter(tau, s) # TODO find params
 
-         self.start_time = rospy.get_time()
+		 self.start_time = rospy.get_time()
 
 
 ## *kwargs definition (see dwb_nobe.py)
@@ -68,32 +70,39 @@ class Controller(object):
 ##                 'elapsed' : elapsed
 ##                  }
 
-     def control(self, *args, **kwargs):
+	 def control(self, *args, **kwargs):
 
-         trgtv = kwargs.get('trgtv')
-         currv = kwargs.get('currv')
-         trgtav = kwargs.get('trgtav')
-         currav = kwargs.get('currav')
-         dbw_enabled = kwargs.get('dbw_enabled')
-         current_pose = kwargs.get('current_pose')
-         final_waypoints = kwargs.get('final_waypoints') 
-         elapsed = kwargs.get('elapsed')
+		 trgtv = kwargs.get('trgtv')
+		 currv = kwargs.get('currv')
+		 trgtav = kwargs.get('trgtav')
+		 currav = kwargs.get('currav')
+		 dbw_enabled = kwargs.get('dbw_enabled')
+		 current_pose = kwargs.get('current_pose')
+		 final_waypoints = kwargs.get('final_waypoints') 
+		 elapsed = kwargs.get('elapsed')
 
-         velocity_error = trgtv - currv
+		 # TODO: Maurizio to check with Mate
+		 # use PID for throttle 
+		 # use yawcontroller to get the steering angle
+		 # use PID for steering
+		 # Question: how to calculate the CTE for steering? 
+		  
+		 if dbw_enabled:
+			 if (currv < 10): # TODO how should speed be limited?
+				throttle = 0.5
+				test = self.throttle_pid.step(trgtv - currv, elapsed)
+				#rospy.loginfo(trgtv - currv)
+			 else:
+				throttle = 0.0
+			 brake = 0.0 
+			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+			 current_angle = self.yawcontroller.get_steering(trgtv, currav, currv)
+			 angle = self.steer_pid.step(target_angle - current_angle, elapsed)
 
-         # TODO: Maurizio to check with Mate
-         # use PID for throttle 
-         # use yawcontroller to get the steering angle
-         # use PID for steering
-         # Question: how to calculate the CTE for steering? 
-          
-         if (currv < 10):
-         	throttle = 0.5 #self.throttle_pid.step(velocity_error, elapsed)
-         else:
-         	throttle = 0.0
-         brake = 0.0 
-         target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
-         current_angle = self.yawcontroller.get_steering(currv, currav, currv)
-         angle = self.steer_pid.step(target_angle - current_angle, elapsed)
-         
-         return throttle, brake, angle
+			 angle = angle*180./math.pi/5.0
+			 
+			 return throttle, brake, angle
+		 else:
+			self.steer_pid.reset()
+			self.throttle_pid.reset()
+			return 0., 0., 0.
