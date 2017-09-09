@@ -14,9 +14,9 @@ T_ki = 0.0
 T_kd = 0.0
 
 # PID params for steer
-S_kp = 0.4
-S_ki = 0.1
-S_kd = 0.0
+S_kp = 2.6
+S_ki = 0.5
+S_kd = 0.01
 
 tau = 0.5
 s = 0.02
@@ -87,7 +87,10 @@ class Controller(object):
          # use PID for steering
          # Question: how to calculate the CTE for steering? 
           
-         throttle = 0.5 #self.throttle_pid.step(velocity_error, elapsed)
+         if (currv < 10):
+         	throttle = 0.5 #self.throttle_pid.step(velocity_error, elapsed)
+         else:
+         	throttle = 0.0
          brake = 0.0 
          target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
          current_angle = self.yawcontroller.get_steering(currv, currav, currv)
