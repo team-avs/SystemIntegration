@@ -14,9 +14,12 @@ T_ki = 0.0
 T_kd = 0.0
 
 # PID params for steer
-S_kp = 2.0
-S_ki = 0.0
+S_kp = 0.4
+S_ki = 0.1
 S_kd = 0.0
+
+tau = 0.5
+s = 0.02
 
 
 
@@ -49,7 +52,7 @@ class Controller(object):
 
          self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
          self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
-         self.lowpass_filter = LowPassFilter(0.2, 0.2) # TODO find params
+         self.lowpass_filter = LowPassFilter(tau, s) # TODO find params
 
          self.start_time = rospy.get_time()
 
@@ -84,11 +87,10 @@ class Controller(object):
          # use PID for steering
          # Question: how to calculate the CTE for steering? 
           
-         throttle = 2.0
+         throttle = 0.5 #self.throttle_pid.step(velocity_error, elapsed)
          brake = 0.0 
-         target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
-         current_angle = self.yawcontroller.get_steering(trgtv, currav, currv)
+         target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
+         current_angle = self.yawcontroller.get_steering(currv, currav, currv)
          angle = self.steer_pid.step(target_angle - current_angle, elapsed)
-         angle = self.lowpass_filter.filt(angle)
-
+         
          return throttle, brake, angle
