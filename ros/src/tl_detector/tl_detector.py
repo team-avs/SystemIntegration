@@ -141,8 +141,8 @@ class TLDetector(object):
 
         fx = self.config['camera_info']['focal_length_x']
         fy = self.config['camera_info']['focal_length_y']
-        image_width = 800#self.config['camera_info']['image_width']
-        image_height = 600#self.config['camera_info']['image_height']
+        image_width = self.config['camera_info']['image_width']
+        image_height = self.config['camera_info']['image_height']
 
         # get transform between pose of camera and world frame
         trans = None
