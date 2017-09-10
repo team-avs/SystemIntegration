@@ -11,17 +11,19 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 0.1
-T_ki = 0.1
-T_kd = 0.1
+T_kp = 4.0
+T_ki = 0.2
+T_kd = 0.02
 
 # PID params for steer
 S_kp = 2.6
 S_ki = 0.5
 S_kd = 0.01
 
-tau = 0.5
-s = 0.02
+
+# Params for lowpass filter
+tau = 0.0
+ts = 1.0
 
 
 
@@ -54,7 +56,7 @@ class Controller(object):
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=-5, mx=1.) # TODO values not read from kwargs?
 		 self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
-		 self.lowpass_filter = LowPassFilter(tau, s) # TODO find params
+		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find params
 
 		 self.start_time = rospy.get_time()
 
@@ -89,14 +91,16 @@ class Controller(object):
 		 if dbw_enabled:
 			 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
 			 brake = 0.0 
-			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
-			 current_angle = self.yawcontroller.get_steering(trgtv, currav, currv)
+			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
+			 current_angle = self.yawcontroller.get_steering(currv, currav, currv)
 			 angle = self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 angle = angle*180./math.pi/5.0
+			 angle = angle*180./math.pi/5.0 # TODO check angle conversion
+			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
 			 
 			 return throttle, brake, angle
 		 else:
 			self.steer_pid.reset()
 			self.throttle_pid.reset()
+			self.lowpass_filter.last_val = 0.
 			return 0., 0., 0.
