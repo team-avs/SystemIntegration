@@ -2,29 +2,29 @@ from styx_msgs.msg import TrafficLight
 import os
 import numpy as np
 import cv2
-import math
-import sys
-import operator
-from keras.optimizers import Adam
-from keras.models import Sequential, load_model
-from keras.layers.core import Dense, Activation, Flatten, Dropout
-from keras.layers.convolutional import Conv2D
-from keras.layers.pooling import MaxPooling2D
-from keras.utils.np_utils import to_categorical
-from keras.layers.normalization import BatchNormalization
-from time import gmtime, strftime
+import tensorflow as tf
+from time import gmtime, strftime, time
+from timeit import default_timer as timer
+import label_map_util
+
 
 DEBUG_MODE = False
-DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/bag_dump_just_traffic_light'
-SCALE = 4
-CLASSES = {'red': TrafficLight.RED, 'yellow': TrafficLight.YELLOW, 'green': TrafficLight.GREEN, 'nolight': 3, 'unidentified': TrafficLight.UNKNOWN}
+# DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/bag_dump_just_traffic_light'
+DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/simulator'
 
+# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained/frozen_inference_graph.pb'
+# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator/frozen_inference_graph.pb'
+PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
+NUM_CLASSES = 4
+# mapping between classifier class and TrafficLight
+CLASSES = {1: TrafficLight.RED, 2: TrafficLight.YELLOW, 3: TrafficLight.GREEN, 4: TrafficLight.UNKNOWN}
+
+# based on https://github.com/tensorflow/models/blob/master/object_detection/object_detection_tutorial.ipynb
 class TLClassifier(object):
 
     def __init__(self):
-        self.batch_size = 10
-        self.model = None
-
+        self.load()
 
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
@@ -38,102 +38,108 @@ class TLClassifier(object):
         """
         # predict traffic light color
         class_index, probability = self.predict(image)
-        print("class: %d, probability: %f" % (class_index, probability))
+        if class_index:
+            print("class: %d, probability: %f" % (class_index, probability))
         return class_index
 
-
-    def create_model(self):
-        self.model = Sequential()
-
-        self.model.add(Conv2D(32, (3, 3), padding='valid', input_shape=(1096/SCALE, 1368/SCALE, 3)))
-        self.model.add(MaxPooling2D(pool_size=(2,2)))
-        self.model.add(Dropout(0.5))
-        self.model.add(Activation('relu'))
-        self.model.add(BatchNormalization())
-
-        self.model.add(Flatten())
-        self.model.add(Dense(32))
-        self.model.add(Activation('relu'))
-        self.model.add(Dense(5))
-        self.model.add(Activation('softmax'))
-
-    def preprocess(self, image):
-        image = cv2.resize(image, (342, 274)) #(1368/SCALE, 1096/SCALE))
-
-        if DEBUG_MODE:
-            cv2.imwrite('tmp/' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) +'.jpg', image)
-
-        # image = image / 127.5 - 1 # normalize to -1, 1
-        return image
 
     def list_images(self):
         images = []
         for path in os.listdir(DATA_PATH):
             for filename in os.listdir(os.path.join(DATA_PATH, path)):
-                images.append( (os.path.join(DATA_PATH, path, filename), CLASSES[path]) )
+                if filename.endswith('.jpg'):
+                    images.append(os.path.join(DATA_PATH, path, filename))
         return images
 
 
-    def generate_data(self, images, batch_size):
-        while True:
-            X, Y = [], []
-            np.random.shuffle(images)
-            for image in images:
-                img = cv2.imread(image[0])
-                X.append(self.preprocess(img))
-                Y.append(image[1])
-                if len(X) >= batch_size or len(X) >= len(images):
-                    yield (np.array(X), to_categorical(np.array(Y), len(CLASSES)))
-                    X, Y = [], []
-
-
-    def train(self):
-        self.create_model()
-        optimizer = Adam(lr=0.00001)
-        self.model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-        images = self.list_images()
-        np.random.shuffle(images)
-        train_images = images[:int(len(images)*0.8)]
-        validation_images = images[int(len(images)*0.8):]
-        print("train size: %d, validation size: %d" % (len(train_images), len(validation_images)))
-        self.model.fit_generator(self.generate_data(train_images, batch_size=self.batch_size), steps_per_epoch=math.ceil(len(train_images)/float(self.batch_size)), epochs=12)
-        self.model.save(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model.h5'))
-        metrics = self.model.evaluate_generator(self.generate_data(validation_images, batch_size=self.batch_size), steps=math.ceil(len(validation_images)/float(self.batch_size)))
-        print(metrics)
-
-
     def load(self):
-        model_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model.h5')
-        if not os.path.isfile(model_file):
-            print("Can't load model")
-            return
-        self.model = load_model(model_file)
+        self.detection_graph = tf.Graph()
+        with self.detection_graph.as_default():
+            od_graph_def = tf.GraphDef()
+            with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+                serialized_graph = fid.read()
+                od_graph_def.ParseFromString(serialized_graph)
+                tf.import_graph_def(od_graph_def, name='')
+
+        label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
+        categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
+        self.category_index = label_map_util.create_category_index(categories)
 
 
-    def display_metrics(self):
-        self.load()
+    def display_samples(self):
         images = self.list_images()
         np.random.shuffle(images)
         validation_images = images[:10]
-        metrics = self.model.evaluate_generator(self.generate_data(validation_images, batch_size=self.batch_size), steps=math.ceil(len(validation_images)/float(self.batch_size)))
-        print(metrics)
-        for image in validation_images[:10]:
-            class_index, probability = self.predict(cv2.imread(image[0]))
-            print("class: %d, predicted class: %d, probability: %f, image: %s" % (image[1], class_index, probability, image[0].replace(DATA_PATH, '')))
+
+        with self.detection_graph.as_default():
+            with tf.Session(graph=self.detection_graph) as sess:
+                # Definite input and output Tensors for detection_graph
+                image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
+                # Each box represents a part of the image where a particular object was detected.
+                detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
+                # Each score represent how level of confidence for each of the objects.
+                # Score is shown on the result image, together with the class label.
+                detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
+                detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
+                for validation_image in validation_images:
+                    image_np = cv2.imread(validation_image)
+                    image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
+                    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+                    image_np_expanded = np.expand_dims(image_np, axis=0)
+                    # Actual detection.
+                    (boxes, scores, classes) = sess.run(
+                        [detection_boxes, detection_scores, detection_classes],
+                        feed_dict={image_tensor: image_np_expanded})
+
+                    self.predict(image_np)
+                    self.show_result_image(image_np, np.squeeze(scores), np.squeeze(boxes), np.squeeze(classes))
 
 
-    def predict(self, image):
-        if not self.model:
-            self.load()
-        predictions = self.model.predict(np.array([self.preprocess(image)]), batch_size=1)[0]
-        return max(enumerate(predictions), key=operator.itemgetter(1))
+    def show_result_image(self, image_np, scores, boxes, classes):
+        # Visualization of the results of a detection.
+        import visualization_utils as vis_util
+        from matplotlib import pyplot as plt
+        vis_util.visualize_boxes_and_labels_on_image_array(
+            image_np, boxes, classes.astype(np.int32),
+            scores, self.category_index, use_normalized_coordinates=True,
+            line_thickness=8)
+        plt.figure(figsize=(12, 8))
+        plt.imshow(image_np)
+        plt.show()
+
+
+    def predict(self, image_np, min_score_thresh=0.5):
+        with self.detection_graph.as_default():
+            with tf.Session(graph=self.detection_graph) as sess:
+                image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
+                detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
+                detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
+                detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
+                image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+
+                start = timer()
+                (boxes, scores, classes) = sess.run(
+                        [detection_boxes, detection_scores, detection_classes],
+                        feed_dict={image_tensor: np.expand_dims(image_np, axis=0)})
+                end = timer()
+
+                print("detection time: %f" % (end - start))
+
+                scores = np.squeeze(scores)
+                classes = np.squeeze(classes)
+                boxes = np.squeeze(boxes)
+
+                # self.show_result_image(image_np, scores, boxes, classes)
+
+                for i, box in enumerate(boxes):
+                    if scores[i] > min_score_thresh:
+                        light_class = CLASSES[classes[i]]
+                        print("DETECTED: %d" % light_class)
+                        return light_class, scores[i]
+        print("Traffic light not detected")
+        return None, None
 
 
 if __name__ == '__main__':
     classifier = TLClassifier()
-    if sys.argv[1] == '-t':
-        classifier.train()
-    elif sys.argv[1] == '-m':
-        classifier.display_metrics()
-    else:
-        print("Usage: use -t for training and -m for current metrics")
+    classifier.display_samples()

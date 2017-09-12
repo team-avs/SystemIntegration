@@ -15,7 +15,7 @@ import numpy as np
 from traffic_light_config import config
 
 STATE_COUNT_THRESHOLD = 3
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 class TLDetector(object):
     def __init__(self):
@@ -36,8 +36,9 @@ class TLDetector(object):
         simulator. When testing on the vehicle, the color state will not be available. You'll need to
         rely on the position of the light and the camera image to predict it.
         '''
-        sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb, queue_size=1)
+        # https://answers.ros.org/question/220502/image-subscriber-lag-despite-queue-1/
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=1, buff_size=2**16)
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -63,6 +64,7 @@ class TLDetector(object):
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
+        # print("traffic light state: %d" % self.lights[0].state)
 
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
@@ -190,17 +192,18 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         x, y = self.project_to_image_plane(light.pose.pose.position)
+        #TODO use light location to zoom in on traffic light in image
+
+        #Get classification
+        predicted = self.light_classifier.get_classification(cv_image)
 
         if DEBUG_MODE:
             # save image for debug purposes
             now = rospy.Time.now()
-            cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
-            cv2.imwrite('tmp/' + str(now) +'.jpg', cv_image)
+            # cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
+            cv2.imwrite('tmp/' + str(predicted) + "_" + str(now) +'.jpg', cv_image)
 
-        #TODO use light location to zoom in on traffic light in image
-
-        #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return predicted
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
