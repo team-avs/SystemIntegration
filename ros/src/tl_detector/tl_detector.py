@@ -195,7 +195,7 @@ class TLDetector(object):
             # save image for debug purposes
             now = rospy.Time.now()
             cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
-            cv2.imwrite('tmp/' + str(now) +'.png', cv_image)
+            cv2.imwrite('tmp/' + str(now) +'.jpg', cv_image)
 
         #TODO use light location to zoom in on traffic light in image
 

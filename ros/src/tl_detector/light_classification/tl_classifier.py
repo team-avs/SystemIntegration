@@ -61,7 +61,7 @@ class TLClassifier(object):
         image = cv2.resize(image, (342, 274)) #(1368/SCALE, 1096/SCALE))
 
         if DEBUG_MODE:
-            cv2.imwrite('tmp/' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) +'.png', image)
+            cv2.imwrite('tmp/' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) +'.jpg', image)
 
         # image = image / 127.5 - 1 # normalize to -1, 1
         return image
