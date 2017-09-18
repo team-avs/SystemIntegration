@@ -12,7 +12,6 @@ import cv2
 import yaml
 import math
 import numpy as np
-from traffic_light_config import config
 
 STATE_COUNT_THRESHOLD = 3
 DEBUG_MODE = True
