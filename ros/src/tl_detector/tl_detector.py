@@ -188,19 +188,22 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        x, y = self.project_to_image_plane(light.pose.pose.position)
+        # x, y = self.project_to_image_plane(light.pose.pose.position)
         #TODO use light location to zoom in on traffic light in image
 
         #Get classification
-        predicted = self.light_classifier.get_classification(cv_image)
+        # predicted = self.light_classifier.get_classification(cv_image)
+        # get light state from ground truth topic
+        predicted = self.lights[0].state
+        print("ground truth state: %d" % predicted)
 
         if DEBUG_MODE:
             # save image for debug purposes
             now = rospy.Time.now()
             # cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
-            cv2.imwrite('tmp/' + str(predicted) + "_" + str(now) +'.jpg', cv_image)
+            # cv2.imwrite('tmp/' + str(predicted) + "_" + str(now) +'.jpg', cv_image)
 
         return predicted
 
