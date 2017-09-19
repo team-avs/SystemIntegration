@@ -51,8 +51,7 @@ class Controller(object):
 		 decel_limit = kwargs.get('decel_limit')
 		 accel_limit = kwargs.get('accel_limit')
 	 
-	 	 print("accel_limit ", accel_limit)
-		 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
+	 	 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
 											max_lat_accel, max_steer_angle)
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
