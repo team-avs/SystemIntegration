@@ -63,7 +63,7 @@ class DBWNode(object):
 						   'max_lat_accel' : max_lat_accel,
 						   'max_steer_angle' : max_steer_angle,
 						   'decel_limit': decel_limit,
-						   'accel_limt' : accel_limit
+						   'accel_limit' : accel_limit
 						  }
 
 		self.controller = Controller(**controller_args)

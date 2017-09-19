@@ -38,7 +38,7 @@ class Controller(object):
 ##                    'max_lat_accel' : max_lat_accel,
 ##                    'max_steer_angle' : max_steer_angle,
 ##                    'decel_limit': decel_limit,
-##                    'accel_limt' : accel_limit
+##                    'accel_limit' : accel_limit
 ##                    }
 
 	 def __init__(self, *args, **kwargs):
@@ -51,10 +51,11 @@ class Controller(object):
 		 decel_limit = kwargs.get('decel_limit')
 		 accel_limit = kwargs.get('accel_limit')
 	 
+	 	 print("accel_limit ", accel_limit)
 		 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
 											max_lat_accel, max_steer_angle)
 
-		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=-5, mx=1.) # TODO values not read from kwargs?
+		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
 		 self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find params
 
@@ -93,10 +94,10 @@ class Controller(object):
 			 brake = 0.0 
 			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
 			 current_angle = self.yawcontroller.get_steering(currv, currav, currv)
-			 angle = self.steer_pid.step(target_angle - current_angle, elapsed)
+			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 angle = angle*180./math.pi/5.0 # TODO check angle conversion
-			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+			 angle = angle*180./math.pi/30. # TODO check angle conversion
+			 # angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
 			 
 			 return throttle, brake, angle
 		 else:
