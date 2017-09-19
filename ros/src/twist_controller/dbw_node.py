@@ -76,6 +76,7 @@ class DBWNode(object):
 		rospy.Subscriber('current_pose', PoseStamped, self.current_pose_cb, queue_size=1)
 
 	# Member variables
+
 		self.dbw_enabled = True # drive-by-wire is enabled by default and can be disable by a manual operator
 
 		self.currv = 0.0 #Current velocity

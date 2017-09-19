@@ -49,7 +49,16 @@ class WaypointUpdater(object):
 
         self.lane = None
 
-        rospy.spin()
+        self.loop()
+
+    def loop(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+
+            if ( self.position is not None and self.lane is not None):
+                self.publish_final_wps()
+                
+            rate.sleep()
 
     def pose_cb(self, msg):
         self.position = msg.pose.position
@@ -65,7 +74,7 @@ class WaypointUpdater(object):
 
     def waypoints_cb(self, waypoints):
         self.lane = waypoints
-        self.publish_final_wps()
+        #self.publish_final_wps()
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
