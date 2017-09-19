@@ -5,7 +5,8 @@ import rospy
 
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped
+from styx_msgs.msg import Lane
 
 from twist_controller import Controller
 
@@ -33,98 +34,129 @@ that we have created in the `__init__` function.
 '''
 
 class DBWNode(object):
-    def __init__(self):
-        rospy.init_node('dbw_node')
+	def __init__(self):
+		rospy.init_node('dbw_node')
 
-        vehicle_mass = rospy.get_param('~vehicle_mass', 1736.35)
-        fuel_capacity = rospy.get_param('~fuel_capacity', 13.5)
-        brake_deadband = rospy.get_param('~brake_deadband', .1)
-        decel_limit = rospy.get_param('~decel_limit', -5)
-        accel_limit = rospy.get_param('~accel_limit', 1.)
-        wheel_radius = rospy.get_param('~wheel_radius', 0.2413)
-        wheel_base = rospy.get_param('~wheel_base', 2.8498)
-        steer_ratio = rospy.get_param('~steer_ratio', 14.8)
-        max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
-        max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+		vehicle_mass = rospy.get_param('~vehicle_mass', 1736.35)
+		fuel_capacity = rospy.get_param('~fuel_capacity', 13.5)
+		brake_deadband = rospy.get_param('~brake_deadband', .1)
+		decel_limit = rospy.get_param('~decel_limit', -5)
+		accel_limit = rospy.get_param('~accel_limit', 1.)
+		wheel_radius = rospy.get_param('~wheel_radius', 0.2413)
+		wheel_base = rospy.get_param('~wheel_base', 2.8498)
+		steer_ratio = rospy.get_param('~steer_ratio', 14.8)
+		max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
+		max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
 
-        min_speed = rospy.get_param('~min_speed', 1.)
+		min_speed = rospy.get_param('~min_speed', 1.)
 
-        self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
-                                         SteeringCmd, queue_size=1)
-        self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
-                                            ThrottleCmd, queue_size=1)
-        self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
-                                         BrakeCmd, queue_size=1)
-        self.controller = Controller(wheel_base, steer_ratio, min_speed, 
-                                     max_lat_accel, max_steer_angle)
+		self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
+										 SteeringCmd, queue_size=1)
+		self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
+											ThrottleCmd, queue_size=1)
+		self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
+										 BrakeCmd, queue_size=1)
 
-        # Subscribing to all the topics needed
-        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
-        rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
+		controller_args = {'wheel_base': wheel_base,
+						   'steer_ratio': steer_ratio,
+						   'min_speed': min_speed,
+						   'max_lat_accel' : max_lat_accel,
+						   'max_steer_angle' : max_steer_angle,
+						   'decel_limit': decel_limit,
+						   'accel_limt' : accel_limit
+						  }
+
+		self.controller = Controller(**controller_args)
+
+		# Subscribing to all the topics needed
+		rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+		rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
+		rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb, queue_size=1)
+		rospy.Subscriber('/final_waypoints', Lane, self.final_waypoints_cb, queue_size=1)
+		rospy.Subscriber('current_pose', PoseStamped, self.current_pose_cb, queue_size=1)
 
 	# Member variables
-        self.dbw_enabled = False
 
-	self.currv = 0.0 #Current velocity
-	self.currav = 0.0 #Current angular velocity
+		self.dbw_enabled = True # drive-by-wire is enabled by default and can be disable by a manual operator
 
-	self.trgtv = 0.0 #Target velocity
-	self.trgtav = 0.0 #Target angular velocity
+		self.currv = 0.0 #Current velocity
+		self.currav = 0.0 #Current angular velocity
 
-        self.loop()
+		self.trgtv = 0.0 #Target velocity
+		self.trgtav = 0.0 #Target angular velocity
 
-    def loop(self):
-        rate = rospy.Rate(10) # 50Hz
+		self.current_pose = None # current pose of the car
+		self.final_waypoints = None # Lane object
+  
+		self.last_timestamp = rospy.rostime.get_time()
 
-	start_time = 0
-        while not start_time:
-            start_time = rospy.Time.now().to_sec()
+		self.loop()
 
-        while not rospy.is_shutdown():
+	def loop(self):
+		rate = rospy.Rate(10) # 50Hz was the original value, but simulator does not work well yet
 
-            #if self.dbw_enabled: 
-###For some reason if I use this if-statement above, nothing happens even if manual mode is switched off
-###I checked that the variable is changing properly
-###More investigation or maybe newer simulator is needed
+		while not rospy.is_shutdown():
+			
+			now = rospy.rostime.get_time()
+			elapsed = now - self.last_timestamp
+			self.last_timestamp = now
 
-            throttle, brake, angle = self.controller.control(self.trgtv,self.trgtav,self.currv)
-            self.publish(throttle, brake, angle*180./3.14159265/5.0)
-            
-            #rospy.loginfo('---------------------------------------------------------------------------')
-            #rospy.loginfo('DBW Loop In : cv:%s;cav:%s;tv:%s;tav:%s;',self.currv,self.currav,self.trgtv,self.trgtav)
-            #rospy.loginfo('DBW Loop Out: th:%s;br:%s;st:%s;',throttle,brake,-angle*180./3.14159265/25.0)
+			control_args = {'trgtv' : self.trgtv, # target linear velocity
+							'currv' : self.currv, # current linear velocity
+							'trgtav' : self.trgtav, # target angular velocity
+							'currav' : self.currav, # current angular velocity
+							'dbw_enabled' : self.dbw_enabled, # dbw status
+							'current_pose' : self.current_pose, # needed for CTE calc
+							'final_waypoints' : self.final_waypoints, # needed for CTE calc
+							'elapsed' : elapsed
+							}
+			
+			throttle, brake, angle = self.controller.control(**control_args)
 
-            rate.sleep()
+			if self.dbw_enabled:
+				self.publish(throttle, brake, angle)
+			
+			#rospy.loginfo('---------------------------------------------------------------------------')
+			#rospy.loginfo('DBW Loop In : cv:%s;cav:%s;tv:%s;tav:%s;',self.currv,self.currav,self.trgtv,self.trgtav)
+			#rospy.loginfo('DBW Loop Out: th:%s;br:%s;st:%s;',throttle,brake,-angle*180./3.14159265/25.0)
 
-    def publish(self, throttle, brake, steer):
-        tcmd = ThrottleCmd()
-        tcmd.enable = True
-        tcmd.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
-        tcmd.pedal_cmd = throttle
-        self.throttle_pub.publish(tcmd)
+			rate.sleep()
 
-        scmd = SteeringCmd()
-        scmd.enable = True
-        scmd.steering_wheel_angle_cmd = steer
-        self.steer_pub.publish(scmd)
+	def publish(self, throttle, brake, steer):
+		tcmd = ThrottleCmd()
+		tcmd.enable = True
+		tcmd.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
+		tcmd.pedal_cmd = throttle
+		self.throttle_pub.publish(tcmd)
 
-        bcmd = BrakeCmd()
-        bcmd.enable = True
-        bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
-        bcmd.pedal_cmd = brake
-        self.brake_pub.publish(bcmd)
+		scmd = SteeringCmd()
+		scmd.enable = True
+		scmd.steering_wheel_angle_cmd = steer
+		self.steer_pub.publish(scmd)
 
-    def dbw_enabled_cb(self, msg):
-	self.dbw_enabled = msg.data
-        rospy.loginfo('DBW: %s',self.dbw_enabled)
+		bcmd = BrakeCmd()
+		bcmd.enable = True
+		bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
+		bcmd.pedal_cmd = brake
+		self.brake_pub.publish(bcmd)
 
-    def twist_cmd_cb(self, msg):
-	self.trgtv  = msg.twist.linear.x 
-	self.trgtav = msg.twist.angular.z
+	def dbw_enabled_cb(self, msg):
+		self.dbw_enabled = bool(msg.data)
+		rospy.loginfo('DBW: %s',self.dbw_enabled)
 
-    def current_velocity_cb(self, msg):
-	self.currv  = msg.twist.linear.x 
-	self.currav = msg.twist.angular.z
+	def twist_cmd_cb(self, msg):
+		self.trgtv  = msg.twist.linear.x 
+		self.trgtav = msg.twist.angular.z
+
+	def current_velocity_cb(self, msg):
+		self.currv  = msg.twist.linear.x 
+		self.currav = msg.twist.angular.z
+
+	def current_pose_cb(self, msg):
+		self.current_pose = msg.pose
+
+	def final_waypoints_cb(self, msg):
+		self.final_waypoints_cb = msg.waypoints
 
 if __name__ == '__main__':
-    DBWNode()
+	DBWNode()
