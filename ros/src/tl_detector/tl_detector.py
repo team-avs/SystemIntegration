@@ -223,7 +223,7 @@ class TLDetector(object):
             if self.waypoints:
                 closest_index = None
                 min_dist = float("inf")
-                for i, light_position in enumerate(light_positions):
+                for i, light_position in enumerate(stop_line_positions):
                     pos = self.waypoints.waypoints[car_position].pose.pose.position
                     curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
                     if curr_dist < min_dist:
@@ -231,8 +231,8 @@ class TLDetector(object):
                         closest_index = i
                 # create object for closest light position
                 pose = Pose()
-                pose.position.x = light_positions[closest_index][0]
-                pose.position.y = light_positions[closest_index][1]
+                pose.position.x = stop_line_positions[closest_index][0]
+                pose.position.y = stop_line_positions[closest_index][1]
                 pose.position.z = 0
                 light_wp = self.get_closest_waypoint(pose)
                 rospy.logdebug("Traffic light waypoint: %d", light_wp)
