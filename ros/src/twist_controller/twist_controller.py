@@ -83,10 +83,11 @@ class Controller(object):
 		 final_waypoints = kwargs.get('final_waypoints') 
 		 elapsed = kwargs.get('elapsed')
 
-		 # TODO: Maurizio to check with Mate
-		 # use PID for throttle 
-		 # use yawcontroller to get the steering angle
-		 # use PID for steering
+		 # used PID for throttle 
+		 # used yawcontroller to get the steering angle
+		 # used PID for steering(using target angle and current angle)
+		 # used lowpass filter to smooth steering response
+		 # brake value set to vehicle mass times throttle
 		  
 		 if dbw_enabled:
 			 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
@@ -95,8 +96,15 @@ class Controller(object):
 			 current_angle = self.yawcontroller.get_steering(currv, currav, currv)
 			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 angle = angle*180./math.pi/30. # TODO check angle conversion
-			 # angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+			 angle = angle*180./math.pi/30. # TODO ask Mate the reason of the last division
+			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+
+			 # TODO read vehicle mass from dbw launch params
+			 if trgtv < 0.1: # desired speed is 0 or close to 0
+			 	brake =  1080. * -throttle # vehicle mass times deceleration
+			 	throttle = 0 # do not activate the throttle while braking
+			 else:
+			 	brake = 0 # no braking if the car is traveling
 			 
 			 return throttle, brake, angle
 		 else:

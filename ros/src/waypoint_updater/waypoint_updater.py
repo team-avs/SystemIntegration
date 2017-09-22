@@ -33,10 +33,6 @@ SPEED = 10 * ONE_MPH
 
 ACCEL = 1.0 #Acceleration in m/s2
 
-class State(Enum):
-    ACC = 1
-    DEC = 2
-
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
@@ -56,10 +52,9 @@ class WaypointUpdater(object):
 
         self.lane = None
 
-        self.state = State.ACC
+        self.last_time = rospy.Time.now().to_sec()
 
-	self.lastwp = None
-	self.lastv  = None
+        self.moving = True
 
         self.loop()
 
@@ -136,59 +131,46 @@ class WaypointUpdater(object):
               wp = i
         if self.wpbehind(wp):
            wp = (wp+1)%wpslen
-	return wp
+        return wp
 
-    def setspeed(self,wpl):
-        a = ACCEL
-        if self.state == State.DEC:
-            a *= -1.0
-	v0 = self.lastv
-        x0 = self.lane.waypoints[self.lastwp].pose.pose.position.x
-        y0 = self.lane.waypoints[self.lastwp].pose.pose.position.y
-        d=0
-        for i in range(len(wpl)):
-	    x1 = wpl[i].pose.pose.position.x
-            y1 = wpl[i].pose.pose.position.y
-	    d = d + self.dist(x0,y0,x1,y1)
-            x0 = x1
-            y0 = y1
-            if v0*v0 + 2.0*a*d < 0.0:
-                v = 0.0
-            else:
-                v = math.sqrt(v0*v0+2.0*a*d)
-	    if v > SPEED:
-                v = SPEED
-            wpl[i].twist.twist.linear.x = v
 
     def publish_final_wps(self):
+
+        # switch between moving and not moving every 10 seconds
+        current_time = rospy.Time.now().to_sec()
+        if  current_time - self.last_time > 20:
+            self.moving = not self.moving
+            self.last_time = current_time
+
         if self.lane == None or self.position==None:
            return
-
         wpslen = len(self.lane.waypoints)
-	wp = self.closestwp()
-	if self.lastwp == None:
-            self.lastwp = wp
-            self.lastv = 0.0
-            return	
-
-	sec = rospy.Time.now().to_sec()
-	if sec%25 < 15:
-            self.state = State.ACC
-	else:
-	    self.state = State.DEC
-
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        mindist = 1000000000.0
+        wp = -1
+        for i in range(wpslen):
+            d = dl(self.position, self.lane.waypoints[i].pose.pose.position)
+            if d < mindist:
+              mindist = d
+              wp = i
+        if self.wpbehind(wp):
+           wp = (wp+1)%wpslen
         l = Lane()
+        #l.header = std_msgs.msg.Header()
         l.header.stamp = rospy.Time.now()
+
         for i in range(wp, wp+LOOKAHEAD_WPS):
             currwp = copy.deepcopy(self.lane.waypoints[i%wpslen])
+            currwp.twist.twist.linear.x = SPEED
+
+            # TEST MAURIZIO
+            if not self.moving:
+                currwp.twist.twist.linear.x = 0.
+
             l.waypoints.append(currwp)
-	self.setspeed(l.waypoints)
+            #rospy.loginfo('Pub: - wp:%s, len:%s',wp, len(l.waypoints))
         self.final_waypoints_pub.publish(l)
 
-        self.lastwp = wp
-	self.lastv  = l.waypoints[0].twist.twist.linear.x
-
-        rospy.loginfo('v0,v1,v2: %s,%s,%s;',l.waypoints[0].twist.twist.linear.x,l.waypoints[1].twist.twist.linear.x,l.waypoints[2].twist.twist.linear.x)
 
 
 if __name__ == '__main__':
