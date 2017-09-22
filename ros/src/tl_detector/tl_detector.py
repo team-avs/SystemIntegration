@@ -202,6 +202,7 @@ class TLDetector(object):
             # cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
             cv2.imwrite('tmp/' + str(predicted) + "_" + str(now) +'.jpg', cv_image)
 
+        print("traffic light state: %d" % self.lights[0].state)
         return predicted
 
     def process_traffic_lights(self):
