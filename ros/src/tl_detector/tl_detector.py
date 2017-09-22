@@ -188,16 +188,13 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # x, y = self.project_to_image_plane(light.pose.pose.position)
         #TODO use light location to zoom in on traffic light in image
 
         #Get classification
-        # predicted = self.light_classifier.get_classification(cv_image)
-        # get light state from ground truth topic
-        predicted = self.lights[0].state
-        print("ground truth state: %d" % predicted)
+        predicted = self.light_classifier.get_classification(cv_image)
 
         if DEBUG_MODE:
             # save image for debug purposes
@@ -255,7 +252,7 @@ class TLDetector(object):
                     light.pose.pose.position.z = 5.85 # FIXME detect light position based on image
 
         if light:
-            state = self.lights[closest_index].state # self.get_light_state(light)
+            state = self.get_light_state(light)
             return light_wp, state
         return -1, TrafficLight.UNKNOWN
 

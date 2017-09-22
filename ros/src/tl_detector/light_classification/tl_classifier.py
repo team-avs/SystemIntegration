@@ -13,8 +13,8 @@ DEBUG_MODE = False
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/simulator'
 
 # PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained/frozen_inference_graph.pb'
-# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
-PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator3/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
+# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator3/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
 NUM_CLASSES = 4
 # mapping between classifier class and TrafficLight
