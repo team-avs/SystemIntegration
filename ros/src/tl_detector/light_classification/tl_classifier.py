@@ -13,8 +13,8 @@ DEBUG_MODE = False
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/simulator'
 
 # PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained/frozen_inference_graph.pb'
-PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
-# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator3/frozen_inference_graph.pb'
+# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator3/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
 NUM_CLASSES = 4
 # mapping between classifier class and TrafficLight
@@ -115,7 +115,7 @@ class TLClassifier(object):
                 detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
                 detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
                 detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-                # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+                image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
                 image_np = cv2.resize(image_np, (200, 150))
 
                 start = timer()
