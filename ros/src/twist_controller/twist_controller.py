@@ -11,19 +11,18 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 4.0
-T_ki = 0.2
-T_kd = 0.02
+T_kp = 16
+T_ki = 0.0
+T_kd = 0.2
 
 # PID params for steer
-S_kp = 2.6
-S_ki = 0.5
-S_kd = 0.01
-
+S_kp = 1.1
+S_ki = 0.02
+S_kd = 0.2
 
 # Params for lowpass filter
-tau = 0.0
-ts = 1.0
+tau = 1.0
+ts = 0.1
 
 
 
@@ -50,15 +49,19 @@ class Controller(object):
 		 max_steer_angle = kwargs.get('max_steer_angle')
 		 decel_limit = kwargs.get('decel_limit')
 		 accel_limit = kwargs.get('accel_limit')
-	 
+		 
+		 self.vehicle_mass = kwargs.get('vehicle_mass')
+		 self.wheel_radius = kwargs.get('wheel_radius')
+		 self.brake_deadband = kwargs.get('brake_deadband')
+
 	 	 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
 											max_lat_accel, max_steer_angle)
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
-		 self.steer_pid = pid.PID(kp=S_kd, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
+		 self.steer_pid = pid.PID(kp=S_kp, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find params
 
-		 self.start_time = rospy.get_time()
+		 self.last_time = rospy.rostime.get_time()
 
 
 ## *kwargs definition (see dwb_nobe.py)
@@ -82,26 +85,31 @@ class Controller(object):
 		 current_pose = kwargs.get('current_pose')
 		 final_waypoints = kwargs.get('final_waypoints') 
 		 elapsed = kwargs.get('elapsed')
+		 current_angle = kwargs.get('current_angle')
+
+		 max_angle = 0.0
 
 		 # used PID for throttle 
 		 # used yawcontroller to get the steering angle
 		 # used PID for steering(using target angle and current angle)
 		 # used lowpass filter to smooth steering response
-		 # brake value set to vehicle mass times throttle
+		 # brake value set to vehicle mass times throttle times wheel radius
 		  
 		 if dbw_enabled:
-			 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
+
+		 	 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
 			 brake = 0.0 
-			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, trgtv) 
-			 current_angle = self.yawcontroller.get_steering(currv, currav, currv)
+
+			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+			 
 			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 angle = angle*180./math.pi/30. # TODO ask Mate the reason of the last division
-			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+			 
+			 #angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
 
 			 # TODO read vehicle mass from dbw launch params
-			 if trgtv < 0.1: # desired speed is 0 or close to 0
-			 	brake =  1080. * -throttle # vehicle mass times deceleration
+			 if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
+			 	brake =  self.vehicle_mass * -throttle * self.wheel_radius # vehicle mass times deceleration
 			 	throttle = 0 # do not activate the throttle while braking
 			 else:
 			 	brake = 0 # no braking if the car is traveling

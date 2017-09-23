@@ -31,8 +31,6 @@ ONE_MPH = 0.44704 #in m/s
 
 SPEED = 10 * ONE_MPH
 
-ACCEL = 1.0 #Acceleration in m/s2
-
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
@@ -137,8 +135,12 @@ class WaypointUpdater(object):
     def publish_final_wps(self):
 
         # switch between moving and not moving every 10 seconds
+        period = 35
+        if self.moving == False:
+            period = 7
+
         current_time = rospy.Time.now().to_sec()
-        if  current_time - self.last_time > 20:
+        if  current_time - self.last_time > period:
             self.moving = not self.moving
             self.last_time = current_time
 
