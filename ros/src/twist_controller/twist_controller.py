@@ -11,18 +11,18 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 16
+T_kp = 0.8
 T_ki = 0.0
-T_kd = 0.2
+T_kd = 0.01
 
 # PID params for steer
-S_kp = 1.1
-S_ki = 0.02
-S_kd = 0.2
+S_kp = 0.45
+S_ki = 0.03
+S_kd = 0.04
 
 # Params for lowpass filter
-tau = 1.0
-ts = 0.1
+tau = 0.2
+ts = 1.0
 
 
 
@@ -39,8 +39,8 @@ class Controller(object):
 ##                    'decel_limit': decel_limit,
 ##                    'accel_limit' : accel_limit.
 ##                    'vehicle_mass' : vehicle_mass,
-##						   'wheel_radius' : wheel_radius,
-##						   'brake_deadband' : brake_deadband
+##					  'wheel_radius' : wheel_radius,
+##					  'brake_deadband' : brake_deadband
 ##                    }
 
 	 def __init__(self, *args, **kwargs):
@@ -62,7 +62,7 @@ class Controller(object):
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
 		 self.steer_pid = pid.PID(kp=S_kp, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
-		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find params
+		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find optimal params
 
 		 self.last_time = rospy.rostime.get_time()
 
@@ -104,7 +104,7 @@ class Controller(object):
 			 
 			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+			 #angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
 
 			 if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
 			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
