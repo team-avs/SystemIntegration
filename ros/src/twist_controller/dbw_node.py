@@ -63,7 +63,10 @@ class DBWNode(object):
 						   'max_lat_accel' : max_lat_accel,
 						   'max_steer_angle' : max_steer_angle,
 						   'decel_limit': decel_limit,
-						   'accel_limit' : accel_limit
+						   'accel_limit' : accel_limit,
+						   'vehicle_mass' : vehicle_mass,
+						   'wheel_radius' : wheel_radius,
+						   'brake_deadband' : brake_deadband
 						  }
 
 		self.controller = Controller(**controller_args)
@@ -74,6 +77,7 @@ class DBWNode(object):
 		rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb, queue_size=1)
 		rospy.Subscriber('/final_waypoints', Lane, self.final_waypoints_cb, queue_size=1)
 		rospy.Subscriber('current_pose', PoseStamped, self.current_pose_cb, queue_size=1)
+		rospy.Subscriber('/vehicle/steering_report', SteeringReport, self.current_angle_cb, queue_size=1)
 
 	# Member variables
 
@@ -89,6 +93,8 @@ class DBWNode(object):
 		self.final_waypoints = None # Lane object
   
 		self.last_timestamp = rospy.rostime.get_time()
+
+		self.current_angle = 0.0
 
 		self.loop()
 
@@ -106,8 +112,7 @@ class DBWNode(object):
 							'trgtav' : self.trgtav, # target angular velocity
 							'currav' : self.currav, # current angular velocity
 							'dbw_enabled' : self.dbw_enabled, # dbw status
-							'current_pose' : self.current_pose, # needed for CTE calc
-							'final_waypoints' : self.final_waypoints, # needed for CTE calc
+							'current_angle' : self.current_angle,
 							'elapsed' : elapsed
 							}
 			
@@ -157,6 +162,9 @@ class DBWNode(object):
 
 	def final_waypoints_cb(self, msg):
 		self.final_waypoints_cb = msg.waypoints
+
+	def current_angle_cb(self, msg):
+		self.current_pose = msg.steering_wheel_angle
 
 if __name__ == '__main__':
 	DBWNode()
