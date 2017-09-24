@@ -60,7 +60,7 @@ class WaypointUpdater(object):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
 
-            if ( self.position is not None and self.lane is not None):
+            if (self.position is not None and self.lane is not None):
                 self.publish_final_wps()
                 
             rate.sleep()

@@ -112,8 +112,6 @@ class DBWNode(object):
 							'trgtav' : self.trgtav, # target angular velocity
 							'currav' : self.currav, # current angular velocity
 							'dbw_enabled' : self.dbw_enabled, # dbw status
-							'current_pose' : self.current_pose, # needed for CTE calc
-							'final_waypoints' : self.final_waypoints, # needed for CTE calc
 							'current_angle' : self.current_angle,
 							'elapsed' : elapsed
 							}

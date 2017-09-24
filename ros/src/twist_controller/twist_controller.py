@@ -37,7 +37,10 @@ class Controller(object):
 ##                    'max_lat_accel' : max_lat_accel,
 ##                    'max_steer_angle' : max_steer_angle,
 ##                    'decel_limit': decel_limit,
-##                    'accel_limit' : accel_limit
+##                    'accel_limit' : accel_limit.
+##                    'vehicle_mass' : vehicle_mass,
+##						   'wheel_radius' : wheel_radius,
+##						   'brake_deadband' : brake_deadband
 ##                    }
 
 	 def __init__(self, *args, **kwargs):
@@ -70,8 +73,7 @@ class Controller(object):
 ##                 'trgtav' : self.trgtav, # target angular velocity
 ##                 'currav' : self.currav, # current angular velocity
 ##                 'dbw_enabled' : self.dbw_enabled, # dbw status
-##                 'current_pose' : self.current_pose, # needed for CTE calc
-##                 'final_waypoints' : self.final_waypoint, # needed for CTE calc
+##				   'current_angle' : self.current_angle,
 ##                 'elapsed' : elapsed
 ##                  }
 
@@ -82,8 +84,6 @@ class Controller(object):
 		 trgtav = kwargs.get('trgtav')
 		 currav = kwargs.get('currav')
 		 dbw_enabled = kwargs.get('dbw_enabled')
-		 current_pose = kwargs.get('current_pose')
-		 final_waypoints = kwargs.get('final_waypoints') 
 		 elapsed = kwargs.get('elapsed')
 		 current_angle = kwargs.get('current_angle')
 
@@ -104,12 +104,10 @@ class Controller(object):
 			 
 			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
 
-			 
-			 #angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
+			 angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
 
-			 # TODO read vehicle mass from dbw launch params
 			 if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
-			 	brake =  self.vehicle_mass * -throttle * self.wheel_radius # vehicle mass times deceleration
+			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
 			 	throttle = 0 # do not activate the throttle while braking
 			 else:
 			 	brake = 0 # no braking if the car is traveling
