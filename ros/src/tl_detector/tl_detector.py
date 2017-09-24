@@ -12,6 +12,7 @@ import cv2
 import yaml
 import math
 import numpy as np
+from timeit import default_timer as timer
 
 STATE_COUNT_THRESHOLD = 3
 DEBUG_MODE = True
@@ -74,7 +75,10 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
+        start = timer()
         light_wp, state = self.process_traffic_lights()
+        end = timer()
+        print("image_cb time: %f" % (end - start))
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -94,7 +98,7 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
-    def get_closest_waypoint(self, pose):
+    def get_closest_waypoint(self, pose, start_from=0):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
         Args:
@@ -109,11 +113,16 @@ class TLDetector(object):
         # brute-force algorithm
         closest_index = None
         min_dist = float("inf")
-        for i, waypoint in enumerate(self.waypoints.waypoints):
+        last_dist = None
+        for i in range(start_from, len(self.waypoints.waypoints)):
+            waypoint = self.waypoints.waypoints[i]
             curr_dist = self.distance(pose.position, waypoint.pose.pose.position)
             if curr_dist < min_dist:
                 min_dist = curr_dist
                 closest_index = i
+            if last_dist and curr_dist > last_dist:
+                break
+            last_dist = curr_dist
         return closest_index
 
     def distance(self, a, b):
@@ -125,7 +134,7 @@ class TLDetector(object):
         Returns:
             value: distance value between a and b
         """
-        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
+        return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2)
 
     def project_to_image_plane(self, point_in_world):
         """Project point from 3D world coordinates to 2D camera image location
@@ -196,9 +205,9 @@ class TLDetector(object):
         #Get classification
         predicted = self.light_classifier.get_classification(cv_image)
 
-        if DEBUG_MODE:
+        #if DEBUG_MODE:
             # save image for debug purposes
-            now = rospy.Time.now()
+            # now = rospy.Time.now()
             # cv2.rectangle(cv_image, (x-70, y-100), (x+70, y+100), (255, 0, 0), 2)
             # cv2.imwrite('tmp/' + str(predicted) + "_" + str(now) +'.jpg', cv_image)
 
@@ -232,7 +241,7 @@ class TLDetector(object):
                     curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
                     pose.position.x = light_position[0]
                     pose.position.y = light_position[1]
-                    light_wp = self.get_closest_waypoint(pose)
+                    light_wp = self.get_closest_waypoint(pose, start_from=car_position)
                     wp_dist_tolerance = 400
                     if curr_dist < min_dist and (light_wp >= car_position or (light_wp + len(self.waypoints.waypoints)) - car_position <= wp_dist_tolerance ):
                         min_dist = curr_dist
