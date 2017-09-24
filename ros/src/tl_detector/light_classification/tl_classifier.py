@@ -10,7 +10,7 @@ import label_map_util
 
 DEBUG_MODE = False
 # DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/bag_dump_just_traffic_light'
-DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/simulator'
+DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/ssd_simulator'
 
 # PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained/frozen_inference_graph.pb'
 # PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
@@ -53,8 +53,12 @@ class TLClassifier(object):
 
 
     def load(self):
+        config = tf.ConfigProto()
+        config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+
         self.detection_graph = tf.Graph()
-        with self.detection_graph.as_default():
+        with tf.Session(graph=self.detection_graph, config=config) as sess:
+            self.session = sess
             od_graph_def = tf.GraphDef()
             with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
                 serialized_graph = fid.read()
@@ -71,28 +75,26 @@ class TLClassifier(object):
         np.random.shuffle(images)
         validation_images = images[:10]
 
-        with self.detection_graph.as_default():
-            with tf.Session(graph=self.detection_graph) as sess:
-                # Definite input and output Tensors for detection_graph
-                image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
-                # Each box represents a part of the image where a particular object was detected.
-                detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
-                # Each score represent how level of confidence for each of the objects.
-                # Score is shown on the result image, together with the class label.
-                detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
-                detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-                for validation_image in validation_images:
-                    image_np = cv2.imread(validation_image)
-                    # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
-                    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                    image_np_expanded = np.expand_dims(image_np, axis=0)
-                    # Actual detection.
-                    (boxes, scores, classes) = sess.run(
-                        [detection_boxes, detection_scores, detection_classes],
-                        feed_dict={image_tensor: image_np_expanded})
+        # Definite input and output Tensors for detection_graph
+        image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
+        # Each box represents a part of the image where a particular object was detected.
+        detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
+        # Each score represent how level of confidence for each of the objects.
+        # Score is shown on the result image, together with the class label.
+        detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
+        detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
+        for validation_image in validation_images:
+            image_np = cv2.imread(validation_image)
+            # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
+            # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+            image_np_expanded = np.expand_dims(image_np, axis=0)
+            # Actual detection.
+            (boxes, scores, classes) = self.session.run(
+                [detection_boxes, detection_scores, detection_classes],
+                feed_dict={image_tensor: image_np_expanded})
 
-                    self.predict(image_np)
-                    self.show_result_image(image_np, np.squeeze(scores), np.squeeze(boxes), np.squeeze(classes))
+            self.predict(image_np)
+            #self.show_result_image(image_np, np.squeeze(scores), np.squeeze(boxes), np.squeeze(classes))
 
 
     def show_result_image(self, image_np, scores, boxes, classes):
@@ -109,34 +111,32 @@ class TLClassifier(object):
 
 
     def predict(self, image_np, min_score_thresh=0.5):
-        with self.detection_graph.as_default():
-            with tf.Session(graph=self.detection_graph) as sess:
-                image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
-                detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
-                detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
-                detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-                image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-                image_np = cv2.resize(image_np, (200, 150))
+        image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
+        detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
+        detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
+        detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+        image_np = cv2.resize(image_np, (200, 150))
 
-                start = timer()
-                (boxes, scores, classes) = sess.run(
-                        [detection_boxes, detection_scores, detection_classes],
-                        feed_dict={image_tensor: np.expand_dims(image_np, axis=0)})
-                end = timer()
+        start = timer()
+        (boxes, scores, classes) = self.session.run(
+                [detection_boxes, detection_scores, detection_classes],
+                feed_dict={image_tensor: np.expand_dims(image_np, axis=0)})
+        end = timer()
 
-                print("detection time: %f" % (end - start))
+        print("detection time: %f" % (end - start))
 
-                scores = np.squeeze(scores)
-                classes = np.squeeze(classes)
-                boxes = np.squeeze(boxes)
+        scores = np.squeeze(scores)
+        classes = np.squeeze(classes)
+        boxes = np.squeeze(boxes)
 
-                # self.show_result_image(image_np, scores, boxes, classes)
+        # self.show_result_image(image_np, scores, boxes, classes)
 
-                for i, box in enumerate(boxes):
-                    if scores[i] > min_score_thresh:
-                        light_class = CLASSES[classes[i]]
-                        print("DETECTED: %d" % light_class)
-                        return light_class, scores[i]
+        for i, box in enumerate(boxes):
+            if scores[i] > min_score_thresh:
+                light_class = CLASSES[classes[i]]
+                print("DETECTED: %d" % light_class)
+                return light_class, scores[i]
         print("Traffic light not detected")
         return None, None
 
