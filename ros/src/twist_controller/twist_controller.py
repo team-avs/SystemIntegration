@@ -20,6 +20,11 @@ S_kp = 0.45
 S_ki = 0.03
 S_kd = 0.04
 
+# PID params for steer - high speed
+S_kp_high = 5.00
+S_ki_high = 0.5
+S_kd_high = 1.2
+
 # Params for lowpass filter
 tau = 0.2
 ts = 1.0
@@ -62,6 +67,7 @@ class Controller(object):
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
 		 self.steer_pid = pid.PID(kp=S_kp, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
+		 self.steer_pid_high = pid.PID(kp=S_kp_high, ki=S_ki_high, kd=S_kd_high, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find optimal params
 
 		 self.last_time = rospy.rostime.get_time()
@@ -97,22 +103,27 @@ class Controller(object):
 		  
 		 if dbw_enabled:
 
-		 	 throttle = self.throttle_pid.step(trgtv - currv, elapsed)
-			 brake = 0.0 
+		 	throttle = self.throttle_pid.step(trgtv - currv, elapsed)
+			brake = 0.0 
 
-			 target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+			target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
+
+			angle_low_speed = self.steer_pid.step(target_angle - current_angle, elapsed)
+			angle_high_speed = self.steer_pid_high.step(target_angle - current_angle, elapsed)
 			 
-			 angle =  self.steer_pid.step(target_angle - current_angle, elapsed)
+			if trgtv < 20:
+				angle = angle_low_speed
+				angle = self.lowpass_filter.filt(angle) 
+			else:
+				angle = angle_high_speed
 
-			 #angle = self.lowpass_filter.filt(angle) # TODO check lowpass filter params
-
-			 if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
+			if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
 			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
 			 	throttle = 0 # do not activate the throttle while braking
-			 else:
+			else:
 			 	brake = 0 # no braking if the car is traveling
 			 
-			 return throttle, brake, angle
+			return throttle, brake, angle
 		 else:
 			self.steer_pid.reset()
 			self.throttle_pid.reset()

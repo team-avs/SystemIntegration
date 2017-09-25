@@ -30,7 +30,7 @@ LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this nu
 
 ONE_MPH = 0.44704
 
-SPEED = 10 * ONE_MPH
+SPEED = 10 * ONE_MPH * 1
 
 class WaypointUpdater(object):
     def __init__(self):
