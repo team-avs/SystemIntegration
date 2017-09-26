@@ -9,16 +9,14 @@ import label_map_util
 
 
 DEBUG_MODE = False
-# DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/bag_dump_just_traffic_light'
-DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/ssd_simulator'
+DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/mixed_dataset'
 
-# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained/frozen_inference_graph.pb'
-# PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator2/frozen_inference_graph.pb'
-PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_simulator3/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_mixed/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
 NUM_CLASSES = 4
 # mapping between classifier class and TrafficLight
 CLASSES = {1: TrafficLight.RED, 2: TrafficLight.YELLOW, 3: TrafficLight.GREEN, 4: TrafficLight.UNKNOWN}
+#CLASSES = {1: 0, 2: 1, 3: 2, 4: 4}
 
 # based on https://github.com/tensorflow/models/blob/master/object_detection/object_detection_tutorial.ipynb
 class TLClassifier(object):
@@ -85,15 +83,16 @@ class TLClassifier(object):
         detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
         for validation_image in validation_images:
             image_np = cv2.imread(validation_image)
-            # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
-            # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+            image_np = cv2.resize(image_np, (200, 150))
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
             image_np_expanded = np.expand_dims(image_np, axis=0)
             # Actual detection.
             (boxes, scores, classes) = self.session.run(
                 [detection_boxes, detection_scores, detection_classes],
                 feed_dict={image_tensor: image_np_expanded})
 
-            self.predict(image_np)
+            print(validation_image)
+            self.predict(cv2.imread(validation_image))
             #self.show_result_image(image_np, np.squeeze(scores), np.squeeze(boxes), np.squeeze(classes))
 
 
@@ -115,8 +114,8 @@ class TLClassifier(object):
         detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
         detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
         detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
         image_np = cv2.resize(image_np, (200, 150))
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
         start = timer()
         (boxes, scores, classes) = self.session.run(

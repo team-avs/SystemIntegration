@@ -13,6 +13,7 @@ import io
 import logging
 import os
 import glob
+from io import BytesIO
 
 from lxml import etree
 import PIL.Image
@@ -36,9 +37,13 @@ FLAGS = flags.FLAGS
 
 SETS = ['train', 'val', 'trainval', 'test']
 
+def convert_to_jpeg(im):
+    with BytesIO() as f:
+        im.save(f, format='JPEG', quality=95)
+        return f.getvalue()
 
 def dict_to_tf_example(data,
-                       dataset_directory,
+                       xml_path,
                        label_map_dict,
                        ignore_difficult_instances=False):
   """Convert XML derived dict to tf.Example proto.
@@ -47,7 +52,7 @@ def dict_to_tf_example(data,
   Args:
     data: dict holding PASCAL XML fields for a single image (obtained by
       running dataset_util.recursive_parse_xml_to_dict)
-    dataset_directory: Path to root directory holding PASCAL dataset
+    xml_path: Path to xml file
     label_map_dict: A map from string label names to integers ids.
     ignore_difficult_instances: Whether to skip difficult instances in the
       dataset  (default: False).
@@ -56,18 +61,23 @@ def dict_to_tf_example(data,
   Raises:
     ValueError: if the image pointed to by data['filename'] is not a valid JPEG
   """
-  img_path = os.path.join(data['folder'], data['filename'])
-  full_path = os.path.join(dataset_directory, img_path)
+  full_path = os.path.join(os.path.dirname(xml_path), data['filename'])
+  print("FULL %s" % full_path)
   with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
-  encoded_jpg_io = io.BytesIO(encoded_jpg)
-  image = PIL.Image.open(encoded_jpg_io)
+  image = PIL.Image.open(io.BytesIO(encoded_jpg))
   if image.format != 'JPEG':
     raise ValueError('Image format not JPEG')
-  key = hashlib.sha256(encoded_jpg).hexdigest()
-
+  
   width = int(data['size']['width'])
   height = int(data['size']['height'])
+  target_width = 200
+  target_height = 150
+  print("WIDTH: %d HEIGHT: %d, target_width: %d, target_height: %d" % (width, height, target_width, target_height))
+  image = image.resize((target_width, target_height))
+  encoded_jpg = convert_to_jpeg(image)
+
+  key = hashlib.sha256(encoded_jpg).hexdigest()
 
   xmin = []
   ymin = []
@@ -84,7 +94,6 @@ def dict_to_tf_example(data,
       continue
 
     difficult_obj.append(int(difficult))
-
     xmin.append(float(obj['bndbox']['xmin']) / width)
     ymin.append(float(obj['bndbox']['ymin']) / height)
     xmax.append(float(obj['bndbox']['xmax']) / width)
@@ -95,8 +104,8 @@ def dict_to_tf_example(data,
     poses.append(obj['pose'].encode('utf8'))
 
   example = tf.train.Example(features=tf.train.Features(feature={
-      'image/height': dataset_util.int64_feature(height),
-      'image/width': dataset_util.int64_feature(width),
+      'image/height': dataset_util.int64_feature(target_height),
+      'image/width': dataset_util.int64_feature(target_width),
       'image/filename': dataset_util.bytes_feature(
           data['filename'].encode('utf8')),
       'image/source_id': dataset_util.bytes_feature(
@@ -141,7 +150,7 @@ def main(_):
     xml = etree.fromstring(xml_str)
     data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
 
-    tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict, FLAGS.ignore_difficult_instances)
+    tf_example = dict_to_tf_example(data, path, label_map_dict, FLAGS.ignore_difficult_instances)
     writer.write(tf_example.SerializeToString())
 
   writer.close()
