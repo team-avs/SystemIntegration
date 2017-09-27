@@ -11,12 +11,11 @@ import label_map_util
 DEBUG_MODE = False
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/mixed_dataset'
 
-PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_mixed/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_new_ssd/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
 NUM_CLASSES = 4
 # mapping between classifier class and TrafficLight
 CLASSES = {1: TrafficLight.RED, 2: TrafficLight.YELLOW, 3: TrafficLight.GREEN, 4: TrafficLight.UNKNOWN}
-#CLASSES = {1: 0, 2: 1, 3: 2, 4: 4}
 
 # based on https://github.com/tensorflow/models/blob/master/object_detection/object_detection_tutorial.ipynb
 class TLClassifier(object):
@@ -36,7 +35,7 @@ class TLClassifier(object):
         """
         # predict traffic light color
         class_index, probability = self.predict(image)
-        if class_index:
+        if class_index is not None:
             print("class: %d, probability: %f" % (class_index, probability))
         return class_index
 
@@ -109,7 +108,7 @@ class TLClassifier(object):
         plt.show()
 
 
-    def predict(self, image_np, min_score_thresh=0.5):
+    def predict(self, image_np, min_score_thresh=0.75):
         image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
         detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
         detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
