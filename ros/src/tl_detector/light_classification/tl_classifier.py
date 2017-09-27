@@ -6,6 +6,7 @@ import tensorflow as tf
 from time import gmtime, strftime, time
 from timeit import default_timer as timer
 import label_map_util
+import rospy
 
 
 DEBUG_MODE = False
@@ -36,7 +37,7 @@ class TLClassifier(object):
         # predict traffic light color
         class_index, probability = self.predict(image)
         if class_index is not None:
-            print("class: %d, probability: %f" % (class_index, probability))
+            rospy.logdebug("class: %d, probability: %f", (class_index, probability))
         return class_index
 
 
@@ -122,7 +123,7 @@ class TLClassifier(object):
                 feed_dict={image_tensor: np.expand_dims(image_np, axis=0)})
         end = timer()
 
-        print("detection time: %f" % (end - start))
+        rospy.logdebug("detection time: %f", (end - start))
 
         scores = np.squeeze(scores)
         classes = np.squeeze(classes)
@@ -133,9 +134,9 @@ class TLClassifier(object):
         for i, box in enumerate(boxes):
             if scores[i] > min_score_thresh:
                 light_class = CLASSES[classes[i]]
-                print("DETECTED: %d" % light_class)
+                rospy.logdebug("DETECTED: %d", light_class)
                 return light_class, scores[i]
-        print("Traffic light not detected")
+        rospy.logdebug("Traffic light not detected")
         return None, None
 
 
