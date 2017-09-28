@@ -26,6 +26,7 @@ class TLDetector(object):
         self.camera_image = None
         self.current_light_index = None
         self.lights = []
+        self.stop_line_waypoints = []
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -61,6 +62,12 @@ class TLDetector(object):
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
+        # precalculate stop line waypoints
+        for light_position in self.config['stop_line_positions']:
+            pose = Pose()
+            pose.position.x = light_position[0]
+            pose.position.y = light_position[1]
+            self.stop_line_waypoints.append(self.get_closest_waypoint(pose))
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -113,16 +120,14 @@ class TLDetector(object):
         # brute-force algorithm
         closest_index = None
         min_dist = float("inf")
-        last_dist = None
         for i in range(start_from, len(self.waypoints.waypoints)):
             waypoint = self.waypoints.waypoints[i]
             curr_dist = self.distance(pose.position, waypoint.pose.pose.position)
             if curr_dist < min_dist:
                 min_dist = curr_dist
                 closest_index = i
-            if last_dist and curr_dist > last_dist:
+            if curr_dist > min_dist:
                 break
-            last_dist = curr_dist
         return closest_index
 
     def distance(self, a, b):
@@ -179,33 +184,27 @@ class TLDetector(object):
         stop_line_positions = self.config['stop_line_positions']
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
-            closest_index = None
+            closest_light_wp = None
             # find the closest visible traffic light (if one exists)
             if self.waypoints:
-                pose = Pose()
-                pose.position.z = 0
                 min_dist = float("inf")
                 for i, light_position in enumerate(stop_line_positions):
                     pos = self.waypoints.waypoints[car_position].pose.pose.position
                     curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
-                    pose.position.x = light_position[0]
-                    pose.position.y = light_position[1]
-                    light_wp = self.get_closest_waypoint(pose, start_from=car_position)
-                    if curr_dist < min_dist and (light_wp - car_position < wp_dist_tolerance or light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance):
+                    light_wp = self.stop_line_waypoints[i]
+                    if curr_dist < min_dist and (light_wp >= car_position or (0 <= light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance)):
                         min_dist = curr_dist
                         closest_index = i
+                        closest_light_wp = light_wp
                     elif curr_dist > min_dist:
                         break
 
-                if closest_index != None:
+                if closest_light_wp != None:
                     # create object for closest light position
-                    pose.position.x = stop_line_positions[closest_index][0]
-                    pose.position.y = stop_line_positions[closest_index][1]
-                    light_wp = self.get_closest_waypoint(pose)
-                    rospy.logdebug("Traffic light waypoint: %d", light_wp)
+                    rospy.logdebug("Traffic light waypoint: %d", closest_light_wp)
                     rospy.logdebug("Car waypoint: %d", car_position)
                     self.current_light_index = closest_index
-                    return light_wp, self.get_light_state()
+                    return closest_light_wp, self.get_light_state()
 
         return -1, TrafficLight.UNKNOWN
 
