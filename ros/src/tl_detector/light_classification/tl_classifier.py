@@ -37,7 +37,7 @@ class TLClassifier(object):
         # predict traffic light color
         class_index, probability = self.predict(image)
         if class_index is not None:
-            rospy.logdebug("class: %d, probability: %f", (class_index, probability))
+            rospy.logdebug("class: %d, probability: %f", class_index, probability)
         return class_index
 
 
