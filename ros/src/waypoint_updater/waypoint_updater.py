@@ -204,7 +204,9 @@ class WaypointUpdater(object):
             l.waypoints.append(currwp)
 
     def publish_final_wps(self):
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+	t0 = rospy.Time.now()
+        
+	dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
 
         if not self.dbw_enabled or self.lane == None or self.position==None or self.currv==None:
            return
@@ -249,7 +251,7 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(l)
 
 	#FOR DEBUG PURPOSES
-	"""
+	
 	wp0 = (wp-1+self.wpslen)%self.wpslen
 	a = self.distancepos(self.lane.waypoints[wp0].pose.pose.position,self.lane.waypoints[wp].pose.pose.position)
 	b = self.distancepos(self.position,self.lane.waypoints[wp].pose.pose.position)
@@ -267,9 +269,9 @@ class WaypointUpdater(object):
 	cross = x1*y2-x2*y1
 	if cross>0:
 	    cte *= -1
-
-	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f};".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte))
-	"""
+	dt = rospy.Time.now() - t0
+	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f}; TIME:{:.2f}".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte, dt.to_sec()))
+	
 
 if __name__ == '__main__':
     try:
