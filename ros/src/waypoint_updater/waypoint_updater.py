@@ -118,6 +118,9 @@ class WaypointUpdater(object):
     def distance(self,x1,y1,x2,y2):
         return math.sqrt( (x2-x1)**2 + (y2-y1)**2 )
 
+    def distancepos(self,pos1,pos2):
+        return math.sqrt( (pos2.x-pos1.x)**2 + (pos2.y-pos1.y)**2 )
+
     def distancewp(self, waypoints, wp1, wp2):
         dist = 0
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
@@ -245,6 +248,25 @@ class WaypointUpdater(object):
 	self.last_output = copy.deepcopy(l.waypoints)
         self.final_waypoints_pub.publish(l)
 
+	#FOR DEBUG PURPOSES
+	"""	
+	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f};".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv))
+	wp0 = (wp-1+self.wpslen)%self.wpslen
+	a = self.distancepos(self.lane.waypoints[wp0].pose.pose.position,self.lane.waypoints[wp].pose.pose.position)
+	b = self.distancepos(self.position,self.lane.waypoints[wp].pose.pose.position)
+	c = self.distancepos(self.position,self.lane.waypoints[wp0].pose.pose.position)
+	s = (a+b+c)/2.
+	cte = 2. * math.sqrt(s*(s-a)*(s-b)*(s-c)) / a
+	x1 = self.lane.waypoints[wp].pose.pose.position.x-self.lane.waypoints[wp0].pose.pose.position.x
+	y1 = self.lane.waypoints[wp].pose.pose.position.y-self.lane.waypoints[wp0].pose.pose.position.y
+	x2 = self.position.x-self.lane.waypoints[wp0].pose.pose.position.x
+	y2 = self.position.y-self.lane.waypoints[wp0].pose.pose.position.y
+	cross = x1*y2-x2*y1
+	if cross>0:
+	    cte *= -1
+
+	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f};".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte))
+	"""
 
 if __name__ == '__main__':
     try:
