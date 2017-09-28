@@ -26,7 +26,7 @@ S_ki_high = 0.5
 S_kd_high = 1.2
 
 # Params for lowpass filter
-tau = 0.2
+tau = 0.1
 ts = 1.0
 
 
@@ -55,8 +55,8 @@ class Controller(object):
 		 min_speed = kwargs.get('min_speed')
 		 max_lat_accel = kwargs.get('max_lat_accel')
 		 max_steer_angle = kwargs.get('max_steer_angle')
-		 decel_limit = kwargs.get('decel_limit')
-		 accel_limit = kwargs.get('accel_limit')
+		 self.decel_limit = kwargs.get('decel_limit')
+		 self.accel_limit = kwargs.get('accel_limit')
 		 
 		 self.vehicle_mass = kwargs.get('vehicle_mass')
 		 self.wheel_radius = kwargs.get('wheel_radius')
@@ -65,7 +65,7 @@ class Controller(object):
 	 	 self.yawcontroller = YawController(wheel_base, steer_ratio, min_speed,
 											max_lat_accel, max_steer_angle)
 
-		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=decel_limit, mx=accel_limit)
+		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=self.decel_limit, mx=self.accel_limit)
 		 self.steer_pid = pid.PID(kp=S_kp, ki=S_ki, kd=S_kd, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.steer_pid_high = pid.PID(kp=S_kp_high, ki=S_ki_high, kd=S_kd_high, mn=-max_steer_angle, mx=max_steer_angle)
 		 self.lowpass_filter = LowPassFilter(tau, ts) # TODO find optimal params
@@ -103,7 +103,7 @@ class Controller(object):
 		  
 		 if dbw_enabled:
 
-		 	throttle = self.throttle_pid.step(trgtv - currv, elapsed)
+		 	throttle = min(self.accel_limit, self.throttle_pid.step(trgtv - currv, elapsed))
 			brake = 0.0 
 
 			target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
@@ -119,6 +119,7 @@ class Controller(object):
 
 			if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
 			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
+			 	brake = max(self.decel_limit, brake)
 			 	throttle = 0 # do not activate the throttle while braking
 			else:
 			 	brake = 0 # no braking if the car is traveling
