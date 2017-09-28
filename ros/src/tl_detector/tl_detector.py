@@ -25,6 +25,7 @@ class TLDetector(object):
         self.waypoints = None
         self.camera_image = None
         self.current_light_index = None
+        self.last_car_wp = None
         self.lights = []
         self.stop_line_waypoints = []
 
@@ -120,13 +121,15 @@ class TLDetector(object):
         # brute-force algorithm
         closest_index = None
         min_dist = float("inf")
-        for i in range(start_from, len(self.waypoints.waypoints)):
+        for i in range(0, len(self.waypoints.waypoints)):
+            if start_from > 0:
+                i = (i + start_from)%len(self.waypoints.waypoints)
             waypoint = self.waypoints.waypoints[i]
             curr_dist = self.distance(pose.position, waypoint.pose.pose.position)
             if curr_dist < min_dist:
                 min_dist = curr_dist
                 closest_index = i
-            if curr_dist > min_dist:
+            if start_from!=0 and curr_dist > min_dist:
                 break
         return closest_index
 
@@ -183,7 +186,8 @@ class TLDetector(object):
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
         if(self.pose):
-            car_position = self.get_closest_waypoint(self.pose.pose)
+            car_position = self.get_closest_waypoint(self.pose.pose, self.last_car_wp or 0)
+            self.last_car_wp = car_position
             closest_light_wp = None
             # find the closest visible traffic light (if one exists)
             if self.waypoints:
@@ -192,7 +196,7 @@ class TLDetector(object):
                     pos = self.waypoints.waypoints[car_position].pose.pose.position
                     curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
                     light_wp = self.stop_line_waypoints[i]
-                    if curr_dist < min_dist and (light_wp >= car_position or (0 <= light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance)):
+                    if curr_dist < min_dist and ((0 <= light_wp - car_position < wp_dist_tolerance) or (0 <= light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance)):
                         min_dist = curr_dist
                         closest_index = i
                         closest_light_wp = light_wp
