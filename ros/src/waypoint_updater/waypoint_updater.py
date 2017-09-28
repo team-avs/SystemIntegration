@@ -249,13 +249,17 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(l)
 
 	#FOR DEBUG PURPOSES
-	
+	"""
 	wp0 = (wp-1+self.wpslen)%self.wpslen
 	a = self.distancepos(self.lane.waypoints[wp0].pose.pose.position,self.lane.waypoints[wp].pose.pose.position)
 	b = self.distancepos(self.position,self.lane.waypoints[wp].pose.pose.position)
 	c = self.distancepos(self.position,self.lane.waypoints[wp0].pose.pose.position)
 	s = (a+b+c)/2.
-	cte = 2. * math.sqrt(s*(s-a)*(s-b)*(s-c)) / a
+        tmp = s*(s-a)*(s-b)*(s-c)
+	if tmp<0.0:
+	    cte = 0.0
+	else:
+	    cte = 2. * math.sqrt(tmp) / a
 	x1 = self.lane.waypoints[wp].pose.pose.position.x-self.lane.waypoints[wp0].pose.pose.position.x
 	y1 = self.lane.waypoints[wp].pose.pose.position.y-self.lane.waypoints[wp0].pose.pose.position.y
 	x2 = self.position.x-self.lane.waypoints[wp0].pose.pose.position.x
@@ -265,7 +269,7 @@ class WaypointUpdater(object):
 	    cte *= -1
 
 	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f};".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte))
-	
+	"""
 
 if __name__ == '__main__':
     try:
