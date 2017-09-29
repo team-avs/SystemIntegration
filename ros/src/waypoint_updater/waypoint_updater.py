@@ -31,8 +31,6 @@ LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this nu
 
 ONE_MPH = 0.44704 #m/s
 
-SPEED = 10 * ONE_MPH * 3
-
 MAX_ACC_A = 10.0 #m/s
 MAX_DEC_A = 10.0 #m/s
 MIN_DEC_A = 1.0 #m/s
@@ -59,13 +57,15 @@ class WaypointUpdater(object):
         self.lane = None
         self.wpslen = None
 
-        self.position = None
-	self.currv = None #m/s
-	self.stop_line_wp = -1 #Closest WP to the next TL-stop-line, -1 if it is too far
-	self.state = State.ACC
-	self.statechanged = True 
 	self.dbw_enabled = False
-	self.last_output = None
+
+        self.position     = None
+	self.currv        = None 
+	self.stop_line_wp = None
+	self.state        = None
+	self.statechanged = None 
+	self.last_output  = None
+	self.SPEED        = None
 
         self.loop()
 
@@ -76,6 +76,8 @@ class WaypointUpdater(object):
 	self.state = State.ACC
 	self.statechanged = True 
 	self.last_output = None
+	self.SPEED = rospy.get_param('~velocity',16.09) / 3.6 #Changing from km/h to m/s; 16.09 km/h ~ 10mph
+	print("Max. Speed: {:.2f} m/s".format(self.SPEED))
 
     def loop(self):
         rate = rospy.Rate(10)
@@ -158,11 +160,11 @@ class WaypointUpdater(object):
 	v0 = self.currv 
 	v = self.currv
 	i = 0
-	while v<SPEED or i<LOOKAHEAD_WPS:
+	while v<self.SPEED or i<LOOKAHEAD_WPS:
 	    d = dl(self.position,self.lane.waypoints[(wp+i)%self.wpslen].pose.pose.position)
 	    v = math.sqrt(v0**2.0+2.0*a*d)
-	    if v>SPEED:
-		v = SPEED
+	    if v>self.SPEED:
+		v = self.SPEED
             currwp = copy.deepcopy(self.lane.waypoints[(wp+i)%self.wpslen])
             currwp.twist.twist.linear.x = v
             l.waypoints.append(currwp)
@@ -238,7 +240,7 @@ class WaypointUpdater(object):
 	if self.state == State.ACC and self.statechanged:
             self.startaccel(l,wp)
 	elif self.state == State.ACC and not self.statechanged:
-            self.keep(l,wp,SPEED)
+            self.keep(l,wp,self.SPEED)
 	elif self.state == State.DEC and self.statechanged:
            self.startdecel(l,wp)
 	elif self.state == State.DEC and not self.statechanged:
