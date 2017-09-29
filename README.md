@@ -49,7 +49,7 @@ In case of deceleration (i.e. states Start of Deceleration and Deceleration) it 
 
 ### Other remarks
 
-The jerk-minimizing formula was not used, because the controller in DBW smooth the speed values, so the jerk does not approach the critical level.
+The jerk-minimizing formula was not used, because the controller in DBW smoothes the speed values, so the jerk does not approach the critical level.
 
 ## DBW
 
