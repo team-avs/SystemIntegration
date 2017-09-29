@@ -28,6 +28,10 @@ class TLDetector(object):
         self.last_car_wp = None
         self.lights = []
         self.stop_line_waypoints = []
+        self.detection_time = 0
+        self.start_detection = None
+        self.end_detection = None
+
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -81,12 +85,18 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
+        # skip detection to avoid queue on the image publisher
+        if self.detection_time > 0 and timer() - self.end_detection < self.detection_time:
+            rospy.logdebug("skip tl detection")
+            return
+
         self.has_image = True
         self.camera_image = msg
-        start = timer()
+        self.start_detection = timer()
         light_wp, state = self.process_traffic_lights()
-        end = timer()
-        rospy.logdebug("image_cb time: %f", (end - start))
+        self.end_detection = timer()
+        self.detection_time = self.end_detection - self.start_detection
+        rospy.logdebug("image_cb time: %f", self.detection_time)
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -185,30 +195,29 @@ class TLDetector(object):
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
+        if self.pose and self.stop_line_waypoints:
             car_position = self.get_closest_waypoint(self.pose.pose, self.last_car_wp or 0)
             self.last_car_wp = car_position
             closest_light_wp = None
             # find the closest visible traffic light (if one exists)
-            if self.waypoints:
-                min_dist = float("inf")
-                for i, light_position in enumerate(stop_line_positions):
-                    pos = self.waypoints.waypoints[car_position].pose.pose.position
-                    curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
-                    light_wp = self.stop_line_waypoints[i]
-                    if curr_dist < min_dist and ((0 <= light_wp - car_position < wp_dist_tolerance) or (0 <= light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance)):
-                        min_dist = curr_dist
-                        closest_index = i
-                        closest_light_wp = light_wp
-                    elif curr_dist > min_dist:
-                        break
+            min_dist = float("inf")
+            for i, light_position in enumerate(stop_line_positions):
+                pos = self.waypoints.waypoints[car_position].pose.pose.position
+                curr_dist = math.sqrt((pos.x-light_position[0])**2 + (pos.y-light_position[1])**2)
+                light_wp = self.stop_line_waypoints[i]
+                if curr_dist < min_dist and ((0 <= light_wp - car_position < wp_dist_tolerance) or (0 <= light_wp + len(self.waypoints.waypoints) - car_position < wp_dist_tolerance)):
+                    min_dist = curr_dist
+                    closest_index = i
+                    closest_light_wp = light_wp
+                elif curr_dist > min_dist:
+                    break
 
-                if closest_light_wp != None:
-                    # create object for closest light position
-                    rospy.logdebug("Traffic light waypoint: %d", closest_light_wp)
-                    rospy.logdebug("Car waypoint: %d", car_position)
-                    self.current_light_index = closest_index
-                    return closest_light_wp, self.get_light_state()
+            if closest_light_wp != None:
+                # create object for closest light position
+                rospy.logdebug("Traffic light waypoint: %d", closest_light_wp)
+                rospy.logdebug("Car waypoint: %d", car_position)
+                self.current_light_index = closest_index
+                return closest_light_wp, self.get_light_state()
 
         return -1, TrafficLight.UNKNOWN
 
