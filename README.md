@@ -37,8 +37,14 @@ State | Description | Possible Next States
 ----- | ----------- | ------------------
 Start of Acceleration | In this state it is planned how the car will accelerate until reaching the target speed. The extent of the acceleration is hard wired. This is the start state. | Acceleration, Start of Deceleration
 Acceleration | In this state the acceleration plan is followed. If the target speed is reached, it is kept further. | Acceleration, Start of Deceleration
-Start of Deceleration | In this state it is planned how the car will decelerate until reaching the Stop Line. | Deceleration, Start of Acceleration
+Start of Deceleration | In this state it is planned how the car will decelerate until reaching the Stop Line. The deceleration rate is between a hard wired minimum and maximum deceleration rate. | Deceleration, Start of Acceleration
 Deceleration | In this state the deceleration plan is followed. If the zero speed is reached, it is kept further. | Deceleration, Start of Acceleration
+
+In case of acceleration (i.e. states Start of Acceleration and Acceleration) it is checked if there is a red or yellow Traffic Light in a distance for which the car should decelerate between a hard wired minimum and maximum deceleration rate. If yes, the state goes to Start of Deceleration. This logic ensures two important things:
+* When the Traffic Light changes from green to yellow/red, the car will not stop if it is not safe to do so (i.e. the deceleration rate would be too high).
+* When a red Traffic Light is too far away, the car will not decelerate very slowly, instead it goes on (maybe the Traffic Light will change to green), and brakes only if the Traffic Light is close enough.
+
+In case of deceleration (i.e. states Start of Deceleration and Deceleration) it is checked if the next Traffic Light changed to green. If yes, the state goes to Start of Acceleration.
 
 
 ### Other remarks
