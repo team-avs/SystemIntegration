@@ -31,14 +31,14 @@ Topic Name | Description
 
 ### Summary on how WPU works
 
-The WPU is basically a finitive state automaton with 4 states. See the details in the table below.
+The WPU is basically a finitive state automaton with 4 states.
 
-State Number | State | Description | Possible Next States
------------- | ----- | ----------- | ------------------
-0 | Start of Acceleration | | Acceleration, Start of Deceleration
-1 | Acceleration | | Acceleration, Start of Deceleration
-2 | Start of Deceleration | | Deceleration, Start of Acceleration
-3 | Deceleration | | Deceleration, Start of Acceleration
+State | Description | Possible Next States
+----- | ----------- | ------------------
+Start of Acceleration | In this state it is planned how the car will accelerate until reaching the target speed. The extent of the acceleration is hard wired. This is the start state. | Acceleration, Start of Deceleration
+Acceleration | In this state the acceleration plan is followed. If the target speed is reached, it is kept further. | Acceleration, Start of Deceleration
+Start of Deceleration | In this state it is planned how the car will decelerate until reaching the Stop Line. | Deceleration, Start of Acceleration
+Deceleration | In this state the deceleration plan is followed. If the zero speed is reached, it is kept further. | Deceleration, Start of Acceleration
 
 
 ### Other remarks
