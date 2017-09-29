@@ -18,6 +18,7 @@ from io import BytesIO
 from lxml import etree
 import PIL.Image
 import tensorflow as tf
+import random
 
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
@@ -71,8 +72,8 @@ def dict_to_tf_example(data,
   
   width = int(data['size']['width'])
   height = int(data['size']['height'])
-  target_width = 200
-  target_height = 150
+  target_width = 300
+  target_height = 300
   print("WIDTH: %d HEIGHT: %d, target_width: %d, target_height: %d" % (width, height, target_width, target_height))
   image = image.resize((target_width, target_height))
   encoded_jpg = convert_to_jpeg(image)
@@ -132,7 +133,8 @@ def main(_):
 
   data_dir = FLAGS.data_dir
 
-  writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  train_writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  validation_writer = tf.python_io.TFRecordWriter(FLAGS.output_path + ".validation")
 
   label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
 
@@ -141,19 +143,23 @@ def main(_):
                                 'aeroplane_' + FLAGS.set + '.txt')
   annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
   files = glob.glob(os.path.join(data_dir, "**/*.xml"))
-  for idx, xml_file in enumerate(files):
-    if idx % 100 == 0:
-      logging.info('On image %d of %d', idx, len(files))
-    path = os.path.join(annotations_dir, xml_file)
-    with tf.gfile.GFile(path, 'r') as fid:
-      xml_str = fid.read()
-    xml = etree.fromstring(xml_str)
-    data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
+  random.shuffle(files)
+  train_files = files[:int(len(files)*0.8)]
+  validation_files = files[int(len(files)*0.8):]
+  for writer, files in [(train_writer, train_files), (validation_writer, validation_files)]:
+    for idx, xml_file in enumerate(files):
+      if idx % 100 == 0:
+        logging.info('On image %d of %d', idx, len(files))
+      path = os.path.join(annotations_dir, xml_file)
+      with tf.gfile.GFile(path, 'r') as fid:
+        xml_str = fid.read()
+      xml = etree.fromstring(xml_str)
+      data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
 
-    tf_example = dict_to_tf_example(data, path, label_map_dict, FLAGS.ignore_difficult_instances)
-    writer.write(tf_example.SerializeToString())
+      tf_example = dict_to_tf_example(data, path, label_map_dict, FLAGS.ignore_difficult_instances)
+      writer.write(tf_example.SerializeToString())
 
-  writer.close()
+    writer.close()
 
 if __name__ == '__main__':
   tf.app.run()
