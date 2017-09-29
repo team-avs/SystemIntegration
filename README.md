@@ -1,4 +1,4 @@
-### Team AVS
+# Team AVS
 
 Team Member | Udacity Account Eamil
 ----------- | ---------------------
@@ -8,7 +8,7 @@ Sampath Vanimisetti | sampath.vanimisetti@gmail.com
 Florian Wulff | florian.wulff@web.de
 Victor Costa | vfcosta@gmail.com
 
-### Short Description about our Solution
+# Short Description about our Solution
 
 ## Waypont Updater
 
