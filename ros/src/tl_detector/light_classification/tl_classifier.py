@@ -12,7 +12,7 @@ import rospy
 DEBUG_MODE = False
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/mixed_dataset'
 
-PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_new_ssd/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.dirname(os.path.realpath(__file__)) + '/data/trained_final/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.dirname(os.path.realpath(__file__)) + '/data/tl_label_map.pbtxt'
 NUM_CLASSES = 4
 # mapping between classifier class and TrafficLight
@@ -83,7 +83,7 @@ class TLClassifier(object):
         detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
         for validation_image in validation_images:
             image_np = cv2.imread(validation_image)
-            image_np = cv2.resize(image_np, (200, 150))
+            image_np = cv2.resize(image_np, (300, 300))
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB) # Fix colorspace
             image_np_expanded = np.expand_dims(image_np, axis=0)
             # Actual detection.
@@ -109,12 +109,12 @@ class TLClassifier(object):
         plt.show()
 
 
-    def predict(self, image_np, min_score_thresh=0.75):
+    def predict(self, image_np, min_score_thresh=0.5):
         image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
         detection_boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
         detection_scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
         detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-        image_np = cv2.resize(image_np, (200, 150))
+        image_np = cv2.resize(image_np, (300, 300))
         image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
         start = timer()
@@ -128,7 +128,6 @@ class TLClassifier(object):
         scores = np.squeeze(scores)
         classes = np.squeeze(classes)
         boxes = np.squeeze(boxes)
-
         # self.show_result_image(image_np, scores, boxes, classes)
 
         for i, box in enumerate(boxes):

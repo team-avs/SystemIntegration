@@ -15,7 +15,7 @@ import numpy as np
 from timeit import default_timer as timer
 
 STATE_COUNT_THRESHOLD = 3
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 class TLDetector(object):
     def __init__(self):
@@ -58,8 +58,7 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb, queue_size=1)
-        # https://answers.ros.org/question/220502/image-subscriber-lag-despite-queue-1/
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=1, buff_size=2**16)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=1)
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -86,7 +85,8 @@ class TLDetector(object):
 
         """
         # skip detection to avoid queue on the image publisher
-        if self.detection_time > 0 and timer() - self.end_detection < self.detection_time:
+        if self.detection_time > 0:
+            self.detection_time -= 0.1 # equivalent to 10hz (publication frequency of image_color)
             rospy.logdebug("skip tl detection")
             return
 
