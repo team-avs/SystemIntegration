@@ -31,10 +31,6 @@ LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this nu
 
 ONE_MPH = 0.44704 #m/s
 
-MAX_ACC_A = 10.0 #m/s
-MAX_DEC_A = 10.0 #m/s
-MIN_DEC_A = 1.0 #m/s
-
 SAFE = 0.5
 
 class State(Enum):
@@ -67,6 +63,10 @@ class WaypointUpdater(object):
 	self.last_output  = None
 	self.SPEED        = None
 
+	self.MAX_ACC_A = None
+	self.MAX_DEC_A = None
+	self.MIN_DEC_A = None
+
         self.loop()
 
     def reset(self):
@@ -77,7 +77,11 @@ class WaypointUpdater(object):
 	self.statechanged = True 
 	self.last_output = None
 	self.SPEED = rospy.get_param('~velocity',16.09) / 3.6 #Changing from km/h to m/s; 16.09 km/h ~ 10mph
-	print("Max. Speed: {:.2f} m/s".format(self.SPEED))
+	self.MAX_ACC_A = rospy.get_param('~accel_limit', 1.) #m/s
+	self.MAX_DEC_A = -rospy.get_param('~decel_limit', -5.) #m/s
+	self.MIN_DEC_A = min(1.0,-rospy.get_param('~decel_limit', -5.)/2.) #m/s
+	#print("{},{},{}".format(self.MAX_ACC_A,self.MAX_DEC_A,self.MIN_DEC_A))
+
 
     def loop(self):
         rate = rospy.Rate(10)
@@ -156,7 +160,7 @@ class WaypointUpdater(object):
 
     def startaccel(self,l,wp):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-	a = MAX_ACC_A
+	a = self.MAX_ACC_A
 	v0 = self.currv 
 	v = self.currv
 	i = 0
@@ -221,8 +225,8 @@ class WaypointUpdater(object):
 	if self.state == State.ACC:
 	    if self.stop_line_wp != -1:
                 d = dl(self.position, self.lane.waypoints[self.stop_line_wp].pose.pose.position)-SAFE
-	        min_brake_d = 0.5*self.currv**2/MAX_DEC_A
-		max_brake_d = 0.5*self.currv**2/MIN_DEC_A
+	        min_brake_d = 0.5*self.currv**2/self.MAX_DEC_A
+		max_brake_d = 0.5*self.currv**2/self.MIN_DEC_A
 		if d<=max_brake_d and d>=min_brake_d:
 		    self.state = State.DEC
 		    self.statechanged = True 
