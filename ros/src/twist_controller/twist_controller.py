@@ -18,7 +18,7 @@ T_kd = 0.01
 # PID params for steer
 S_kp = 0.45
 S_ki = 0.03
-S_kd = 0.04
+S_kd = 0.02
 
 # PID params for steer - high speed
 S_kp_high = 5.00
@@ -26,7 +26,7 @@ S_ki_high = 0.5
 S_kd_high = 1.2
 
 # Params for lowpass filter
-tau = 0.1
+tau = 0.05
 ts = 1.0
 
 
@@ -111,11 +111,11 @@ class Controller(object):
 			angle_low_speed = self.steer_pid.step(target_angle - current_angle, elapsed)
 			angle_high_speed = self.steer_pid_high.step(target_angle - current_angle, elapsed)
 			 
-			if trgtv < 20:
+			if trgtv < 15:
 				angle = angle_low_speed
 				angle = self.lowpass_filter.filt(angle) 
 			else:
-				angle = angle_high_speed
+				angle = target_angle + angle_high_speed
 
 			if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
 			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
