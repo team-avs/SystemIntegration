@@ -51,7 +51,37 @@ In case of deceleration (i.e. states Start of Deceleration and Deceleration) it 
 
 The jerk-minimizing formula was not used, because the controller in DBW smoothes the speed values, so the jerk does not approach the critical level.
 
-## DBW
+## DBW - drive-by-wire component
+
+### Parametes used by DBW
+
+* '*vehicle_mass*' : vehicle mass
+* '*wheel_base*': wheel base
+* '*wheel_radius*' : wheel radius
+* '*min_speed*': minimum cruise speed
+* '*max_speed*': maximum cruise speed
+* '*max_lat_accel*' : maximum lateral acceleration
+* '*max_steer_angle*' : maximum steer angle
+* '*steer_ratio*': steer ratio
+* '*decel_limit*': deceleration limit (used for braking)
+* '*accel_limit*' : acceleration limit
+* '*brake_deadband*' : brake deadband
+
+### Responsibilities of DBW node
+
+1. Subscribe to the relevant topics: */twist_cmd*, */current_velocity*, */vehicle/dbw_enabled*, */final_waypoints*, *current_pose*, */vehicle/steering_report*
+2. Instantiate a twist controller
+3. Use, in a loop, the twist controller to obtain and publish **throttle**, **steering**, and **brake** values
+						  
+### Responsibilities of the Twist Controller
+
+1. Instantiate a YawController with the following args: *wheel base*, *steering ratio*, *min speed*, *max lateral acceleration*, *max steering angle*
+2. Instantiate a PID controller for the throttle
+3. Instantiate a PID controller for the steering
+4. Instantiate a LowPass filter to smooth the steering PID controller response
+5. In the control loop, use yaw controller and PIDs to determine target **throttle**, **steering**, and **brake** values
+6. In case DBW is disabled return null values for throttle, brake, and steering, and reset the PID controllers
+
 
 ## Traffic Light Detection
 
