@@ -53,7 +53,7 @@ The jerk-minimizing formula was not used, because the controller in DBW smoothes
 
 ## DBW - drive-by-wire component
 
-### Parametes used by DBW
+### Parameters used by DBW
 
 * '*vehicle_mass*' : vehicle mass
 * '*wheel_base*': wheel base
