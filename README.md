@@ -55,4 +55,15 @@ The jerk-minimizing formula was not used, because the controller in DBW smoothes
 
 ## Traffic Light Detection
 
+We used the [Object Detection API from TensorFlow](https://github.com/tensorflow/models/tree/master/research/object_detection) as the main tool for detection and classification of traffic lights.
 
+[Single Shot MultiBox Detector (SSD)](https://arxiv.org/abs/1512.02325) was the method used to detect and classify traffic lights: SSD is fast and seems to be a good fit for the task. We had also tried other approaches but our solution using SSD proved to be a good balance between performance and accuracy.
+
+We created our own dataset based on images taken from the simulator and from bag files provided for this project.
+Although small,  the dataset used for training proved to be enough to reach a satisfactory accuracy for the simulator and for the real execution (tested with bag files).
+To address performance issues, we resized images in the dataset to 300x300. Thus, the detector was able to identify traffic lights with good performance without hurting accuracy. See [this file](https://github.com/team-avs/SystemIntegration/blob/master/ros/src/tl_detector/light_classification/model/ssd_mobilenet_v1_coco_real.config) for the model used by us to train our solution. 
+
+See below some classification examples.
+
+<img src="imgs/tl_detector1.png" width="180">
+<img src="imgs/tl_detector2.png" width="180">
