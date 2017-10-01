@@ -11,9 +11,9 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 0.8
-T_ki = 0.0
-T_kd = 0.1
+T_kp = 1.6
+T_ki = 0.05
+T_kd = 0.3
 
 # PID params for steer
 S_kp = 0.45
@@ -26,8 +26,8 @@ S_ki_high = 0.5
 S_kd_high = 1.2
 
 # Params for lowpass filter
-tau = 0.05
-ts = 1.0
+tau = 0.1
+ts = 0.8
 
 
 
@@ -95,7 +95,7 @@ class Controller(object):
 		 current_angle = kwargs.get('current_angle')
 
                  if trgtv >  self.max_speed:
-                     trgtv = self.max_speed;
+                     trgtv = self.max_speed
 
 		 max_angle = 0.0
 
@@ -116,13 +116,13 @@ class Controller(object):
 			angle_high_speed = self.steer_pid_high.step(target_angle - current_angle, elapsed)
 			 
 			if trgtv < 15:
-				angle = angle_low_speed
+				angle = (target_angle + angle_low_speed) / 2.0
 				angle = self.lowpass_filter.filt(angle) 
 			else:
-				angle = target_angle + angle_high_speed
+				angle = (target_angle + angle_high_speed) / 2.0
 
-			if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
-			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
+			if throttle < self.brake_deadband: # or trgtv < 0.05: desired speed is close to 0 or we are in the brake deadband
+			 	brake = -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
 			 	brake = max(self.decel_limit, brake)
 			 	throttle = 0 # do not activate the throttle while braking
 			else:
