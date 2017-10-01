@@ -12,8 +12,8 @@ ONE_MPH = 0.44704
 
 # PID params for throttle
 T_kp = 1.6
-T_ki = 0.05
-T_kd = 0.3
+T_ki = 0.0
+T_kd = 0.1
 
 # PID params for steer
 S_kp = 0.45
@@ -94,10 +94,8 @@ class Controller(object):
 		 elapsed = kwargs.get('elapsed')
 		 current_angle = kwargs.get('current_angle')
 
-                 if trgtv >  self.max_speed:
-                     trgtv = self.max_speed
-
-		 max_angle = 0.0
+                 #if trgtv >  self.max_speed:
+                 #    trgtv = self.max_speed
 
 		 # used PID for throttle 
 		 # used yawcontroller to get the steering angle
@@ -108,7 +106,7 @@ class Controller(object):
 		 if dbw_enabled:
 
 		 	throttle = min(self.accel_limit, self.throttle_pid.step(trgtv - currv, elapsed))
-			brake = 0.0 
+			brake = 0.
 
 			target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
 
@@ -117,16 +115,16 @@ class Controller(object):
 			 
 			if trgtv < 15:
 				angle = (target_angle + angle_low_speed) / 2.0
-				angle = self.lowpass_filter.filt(angle) 
+				#angle = self.lowpass_filter.filt(angle) 
 			else:
 				angle = (target_angle + angle_high_speed) / 2.0
 
-			if throttle < self.brake_deadband: # or trgtv < 0.05: desired speed is close to 0 or we are in the brake deadband
+			if throttle < self.brake_deadband or trgtv < 0.05: #desired speed is close to 0 or we are in the brake deadband
 			 	brake = -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
 			 	brake = max(self.decel_limit, brake)
-			 	throttle = 0 # do not activate the throttle while braking
+			 	throttle = 0. # do not activate the throttle while braking
 			else:
-			 	brake = 0 # no braking if the car is traveling
+			 	brake = 0. # no braking if the car is traveling
 			 
 			return throttle, brake, angle
 		 else:
