@@ -103,7 +103,7 @@ class DBWNode(object):
 		self.loop()
 
 	def loop(self):
-		rate = rospy.Rate(50) # 50Hz was the original value, but simulator does not work well yet
+		rate = rospy.Rate(50) # 50Hz 
 
 		while not rospy.is_shutdown():
 			
