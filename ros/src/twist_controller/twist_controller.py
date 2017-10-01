@@ -12,13 +12,13 @@ ONE_MPH = 0.44704
 
 # PID params for throttle
 T_kp = 1.6
-T_ki = 0.0
+T_ki = 0.05
 T_kd = 0.1
 
 # PID params for steer
 S_kp = 0.45
-S_ki = 0.03
-S_kd = 0.04
+S_ki = 0.1
+S_kd = 0.08
 
 # PID params for steer - high speed
 S_kp_high = 5.00
@@ -94,8 +94,8 @@ class Controller(object):
 		 elapsed = kwargs.get('elapsed')
 		 current_angle = kwargs.get('current_angle')
 
-                 #if trgtv >  self.max_speed:
-                 #    trgtv = self.max_speed
+                 if trgtv >  self.max_speed:
+                     trgtv = self.max_speed
 
 		 # used PID for throttle 
 		 # used yawcontroller to get the steering angle
@@ -114,10 +114,10 @@ class Controller(object):
 			angle_high_speed = self.steer_pid_high.step(target_angle - current_angle, elapsed)
 			 
 			if trgtv < 15:
-				angle = (target_angle + angle_low_speed) / 2.0
-				#angle = self.lowpass_filter.filt(angle) 
+				angle = (target_angle + angle_low_speed) / 2.
+				angle = self.lowpass_filter.filt(angle) 
 			else:
-				angle = (target_angle + angle_high_speed) / 2.0
+				angle = (target_angle + angle_high_speed) / 2.
 
 			if throttle < self.brake_deadband or trgtv < 0.05: #desired speed is close to 0 or we are in the brake deadband
 			 	brake = -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration

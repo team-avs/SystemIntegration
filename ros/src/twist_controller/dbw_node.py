@@ -115,7 +115,7 @@ class DBWNode(object):
 							'current_angle' : self.current_angle,
 							'elapsed' : elapsed
 							}
-			
+
 			throttle, brake, angle = self.controller.control(**control_args)
 
 			if self.dbw_enabled:
