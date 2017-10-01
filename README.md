@@ -77,7 +77,7 @@ The jerk-minimizing formula was not used, because the controller in DBW smoothes
 
 1. Instantiate a YawController with the following args: *wheel base*, *steering ratio*, *min speed*, *max lateral acceleration*, *max steering angle*
 2. Instantiate a PID controller for the throttle
-3. Instantiate a PID controller for the steering
+3. Instantiate two PID controllers for the steering (one based on the angles, one based on the CTE)
 4. Instantiate a LowPass filter to smooth the steering PID controller response
 5. In the control loop, use yaw controller and PIDs to determine target **throttle**, **steering**, and **brake** values
 6. In case DBW is disabled return null values for throttle, brake, and steering, and reset the PID controllers

@@ -11,24 +11,14 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 0.8
+T_kp = 1.4
 T_ki = 0.05
 T_kd = 0.1
-
-# PID params for steer
-S_kp = 0.45
-S_ki = 0.1
-S_kd = 0.08
 
 # PID params for steer - high speed
 S_kp_high = 0.8
 S_ki_high = 0.01
 S_kd_high = 0.03
-
-# Params for lowpass filter
-tau = 0.1
-ts = 1.0
-
 
 
 class Controller(object):
@@ -67,11 +57,9 @@ class Controller(object):
 											max_lat_accel, self.max_steer_angle)
 
 		 self.throttle_pid = pid.PID(kp=T_kp, ki=T_ki, kd=T_kd, mn=self.decel_limit, mx=self.accel_limit)
-		 self.steer_pid = pid.PID(kp=S_kp, ki=S_ki, kd=S_kd, mn=-self.max_steer_angle, mx=self.max_steer_angle)
 		 self.steer_pid_high = pid.PID(kp=S_kp_high, ki=S_ki_high, kd=S_kd_high, mn=-self.max_steer_angle, mx=self.max_steer_angle)
 		 self.steer_pid_high_cte = pid.PID(kp=S_kp_high, ki=S_ki_high, kd=S_kd_high, mn=-self.max_steer_angle, mx=self.max_steer_angle)
-		 self.lowpass_filter = LowPassFilter(tau, ts) 
-
+		 
 		 self.last_time = rospy.rostime.get_time()
 
 
@@ -96,13 +84,9 @@ class Controller(object):
 		 current_angle = kwargs.get('current_angle')
 		 cte = kwargs.get('cte')
 
-		 if trgtv > self.max_speed:
-			trgtv = self.max_speed
-
 		 # used PID for throttle 
 		 # used yawcontroller to get the steering angle
-		 # used PID for steering(using target angle and current angle)
-		 # used lowpass filter to smooth steering response
+		 # used two PIDs for steering (yaw and CTE error)
 		 # brake value set to vehicle mass times throttle times wheel radius
 
 		 if dbw_enabled:
@@ -111,18 +95,11 @@ class Controller(object):
 			brake = 0.
 
 			target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
-
-			angle_low_speed = self.steer_pid.step(target_angle - current_angle, elapsed)
 			angle_high_speed = self.steer_pid_high.step(target_angle - current_angle, elapsed)
 			angle_high_speed_cte = self.steer_pid_high_cte.step(cte, elapsed)
 			 
-			if trgtv < 10:
-				angle = (target_angle + angle_low_speed) / 2.
-				angle = self.lowpass_filter.filt(angle) 
-			else:
-				angle = (target_angle + angle_high_speed + angle_high_speed_cte) / 3.
-				#angle = self.lowpass_filter.filt(angle) 
-
+			angle = (target_angle + angle_high_speed + angle_high_speed_cte) / 3. # average
+			
 			if throttle < self.brake_deadband or trgtv < 0.1: #desired speed is close to 0 or we are in the brake deadband
 				brake = -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration time wheel radius
 				brake = max(self.decel_limit, brake)
@@ -132,7 +109,7 @@ class Controller(object):
 			 
 			return throttle, brake, angle
 		 else:
-			self.steer_pid.reset()
+			self.steer_pid_high.reset()
+			steer_pid_high_cte.reset()
 			self.throttle_pid.reset()
-			self.lowpass_filter.last_val = 0.
 			return 0., 0., 0.
