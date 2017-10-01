@@ -121,7 +121,7 @@ class Controller(object):
 			else:
 				angle = target_angle + angle_high_speed
 
-			if throttle < self.brake_deadband or trgtv < self.min_speed: # desired speed is 0 or close to 0 brake deadband
+			if throttle < self.brake_deadband: # desired speed is 0 or close to 0 brake deadband
 			 	brake =  -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration
 			 	brake = max(self.decel_limit, brake)
 			 	throttle = 0 # do not activate the throttle while braking
