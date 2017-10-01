@@ -258,7 +258,6 @@ class WaypointUpdater(object):
 	self.last_output = copy.deepcopy(l.waypoints)
         self.final_waypoints_pub.publish(l)
 
-	#FOR DEBUG PURPOSES
 	wp0 = (wp-1+self.wpslen)%self.wpslen
 	a = self.distancepos(self.lane.waypoints[wp0].pose.pose.position,self.lane.waypoints[wp].pose.pose.position)
 	b = self.distancepos(self.position,self.lane.waypoints[wp].pose.pose.position)
@@ -277,9 +276,12 @@ class WaypointUpdater(object):
 	if cross>0:
 	    cte *= -1
 	dt = rospy.Time.now() - t0
-    
+	planv = l.waypoints[0].twist.twist.linear.x
+	
         self.cte_pub.publish(cte)
-	#print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f}; TIME:{:.2f}".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte, dt.to_sec()))
+
+	#FOR DEBUG PURPOSES
+	#print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; PLANV:{:.2f}; CTE:{:.3f}; TIME:{:.2f}".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv, planv,cte, dt.to_sec()))
 	
 
 if __name__ == '__main__':
