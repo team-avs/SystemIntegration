@@ -4,7 +4,7 @@ import rospy
 import tf
 from geometry_msgs.msg import TwistStamped, PoseStamped
 from styx_msgs.msg import Lane, Waypoint
-from std_msgs.msg import Bool,Int32
+from std_msgs.msg import Bool,Int32, Float32
 
 
 import math
@@ -49,6 +49,8 @@ class WaypointUpdater(object):
 	rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb,queue_size=1)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
+
+        self.cte_pub = rospy.Publisher('/vehicle/cte', Float32, queue_size=1)
 
         self.lane = None
         self.wpslen = None
@@ -257,7 +259,6 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(l)
 
 	#FOR DEBUG PURPOSES
-	"""
 	wp0 = (wp-1+self.wpslen)%self.wpslen
 	a = self.distancepos(self.lane.waypoints[wp0].pose.pose.position,self.lane.waypoints[wp].pose.pose.position)
 	b = self.distancepos(self.position,self.lane.waypoints[wp].pose.pose.position)
@@ -276,8 +277,10 @@ class WaypointUpdater(object):
 	if cross>0:
 	    cte *= -1
 	dt = rospy.Time.now() - t0
-	print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f}; TIME:{:.2f}".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte, dt.to_sec()))
-	"""
+    
+        self.cte_pub.publish(cte)
+	#print("ST:{}; STC:{}; WP:{}; TLSLWP:{}; CURRV:{:.2f}; CTE:{:.3f}; TIME:{:.2f}".format(self.state,self.statechanged, wp, self.stop_line_wp, self.currv,cte, dt.to_sec()))
+	
 
 if __name__ == '__main__':
     try:

@@ -7,6 +7,7 @@ from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped, PoseStamped
 from styx_msgs.msg import Lane
+from std_msgs.msg import Float32
 
 from twist_controller import Controller
 
@@ -78,6 +79,7 @@ class DBWNode(object):
 		rospy.Subscriber('/final_waypoints', Lane, self.final_waypoints_cb, queue_size=1)
 		rospy.Subscriber('current_pose', PoseStamped, self.current_pose_cb, queue_size=1)
 		rospy.Subscriber('/vehicle/steering_report', SteeringReport, self.current_angle_cb, queue_size=1)
+		rospy.Subscriber('/vehicle/cte', Float32, self.cte_cb, queue_size=1)
 
 	# Member variables
 
@@ -96,6 +98,8 @@ class DBWNode(object):
 
 		self.current_angle = 0.0
 
+		self.cte = 0.0
+
 		self.loop()
 
 	def loop(self):
@@ -113,6 +117,7 @@ class DBWNode(object):
 							'currav' : self.currav, # current angular velocity
 							'dbw_enabled' : self.dbw_enabled, # dbw status
 							'current_angle' : self.current_angle,
+							'cte' : self.cte,
 							'elapsed' : elapsed
 							}
 
@@ -159,6 +164,10 @@ class DBWNode(object):
 
 	def current_pose_cb(self, msg):
 		self.current_pose = msg.pose
+
+	def cte_cb(self, msg):
+		self.cte = msg.data
+		#rospy.loginfo('CTE: %s', msg.data)
 
 	def final_waypoints_cb(self, msg):
 		self.final_waypoints_cb = msg.waypoints
