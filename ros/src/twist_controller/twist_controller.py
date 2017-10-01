@@ -11,8 +11,8 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 1.4
-T_ki = 0.05
+T_kp = 2.0
+T_ki = 0.4
 T_kd = 0.1
 
 # PID params for steer - high speed
@@ -110,6 +110,6 @@ class Controller(object):
 			return throttle, brake, angle
 		 else:
 			self.steer_pid_high.reset()
-			steer_pid_high_cte.reset()
+			self.steer_pid_high_cte.reset()
 			self.throttle_pid.reset()
 			return 0., 0., 0.
