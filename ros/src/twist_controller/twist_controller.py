@@ -11,9 +11,9 @@ GAS_DENSITY = 2.858 # needed to calc the car's mass when fuel is used
 ONE_MPH = 0.44704
 
 # PID params for throttle
-T_kp = 2.0
-T_ki = 0.4
-T_kd = 0.1
+T_kp = 10.0
+T_ki = 0.0
+T_kd = 0.01
 
 # PID params for steer - high speed
 S_kp_high = 0.8
@@ -89,9 +89,14 @@ class Controller(object):
 		 # used two PIDs for steering (yaw and CTE error)
 		 # brake value set to vehicle mass times throttle times wheel radius
 
+		 if trgtv > self.max_speed: # limit speed
+		 	trgtv = self.max_speed
+
 		 if dbw_enabled:
 
-			throttle = min(self.accel_limit, self.throttle_pid.step(trgtv - currv, elapsed))
+			throttle = self.throttle_pid.step(trgtv - currv, elapsed)
+			if (throttle > self.accel_limit):
+				throttle = self.accel_limit
 			brake = 0.
 
 			target_angle = self.yawcontroller.get_steering(trgtv, trgtav, currv) 
@@ -100,10 +105,13 @@ class Controller(object):
 			 
 			angle = (target_angle + angle_high_speed + angle_high_speed_cte) / 3. # average
 			
-			if throttle < self.brake_deadband or trgtv < 0.1: #desired speed is close to 0 or we are in the brake deadband
+			# we are in the brake deadband
+			# or we are decelerating below min_speed
+			if throttle <= self.brake_deadband or (throttle < 0 and trgtv < self.min_speed): 
 				brake = -(self.vehicle_mass * throttle * self.wheel_radius) # vehicle mass times deceleration time wheel radius
-				brake = max(self.decel_limit, brake)
-				throttle = 0. # do not activate the throttle while braking
+				if (brake < self.decel_limit):
+					brake = self.decel_limit
+				throttle = 0. # do not throttle while braking
 			else:
 				brake = 0. # no braking if the car is traveling
 			 

@@ -103,7 +103,7 @@ class DBWNode(object):
 		self.loop()
 
 	def loop(self):
-		rate = rospy.Rate(10) # 50Hz was the original value, but simulator does not work well yet
+		rate = rospy.Rate(50) # 50Hz was the original value, but simulator does not work well yet
 
 		while not rospy.is_shutdown():
 			
@@ -126,9 +126,9 @@ class DBWNode(object):
 			if self.dbw_enabled:
 				self.publish(throttle, brake, angle)
 			
-			print('---------------------------------------------------------------------------')
-			print('DBW Loop In : cv:%s;cav:%s;tv:%s;tav:%s;',self.currv,self.currav,self.trgtv,self.trgtav)
-			print('DBW Loop Out: th:%s;br:%s;st:%s;',throttle,brake,-angle*180./3.14159265/25.0)
+			#print('---------------------------------------------------------------------------')
+			#print('DBW Loop In : cv:%s;cav:%s;tv:%s;tav:%s;',self.currv,self.currav,self.trgtv,self.trgtav)
+			#print('DBW Loop Out: th:%s;br:%s;st:%s;',throttle,brake,-angle*180./3.14159265/25.0)
 
 			rate.sleep()
 
