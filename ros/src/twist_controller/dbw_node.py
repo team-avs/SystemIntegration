@@ -103,7 +103,7 @@ class DBWNode(object):
 		self.loop()
 
 	def loop(self):
-		rate = rospy.Rate(50) # 50Hz 
+		rate = rospy.Rate(10) # 10Hz 
 
 		while not rospy.is_shutdown():
 			
@@ -152,7 +152,7 @@ class DBWNode(object):
 
 	def dbw_enabled_cb(self, msg):
 		self.dbw_enabled = bool(msg.data)
-		rospy.loginfo('DBW: %s',self.dbw_enabled)
+		#rospy.loginfo('DBW: %s',self.dbw_enabled)
 
 	def twist_cmd_cb(self, msg):
 		self.trgtv  = msg.twist.linear.x 
